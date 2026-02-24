@@ -1,0 +1,1116 @@
+/* ============================================================
+   ProteinVis — styles.css
+   Dark scientific theme following Meyer & Dykes (2020) principles:
+   visual hierarchy through typography, contrast ratios that meet
+   WCAG AA for accessibility, and consistent spatial grouping to
+   reduce cognitive load for novice users.
+
+   Colour palette:
+     Deep navy background: #070b14
+     Panel surface:        #0d1525
+     Subtle border:        #1e2d4a
+     Cyan accent:          #22d3ee  (primary interactive elements)
+     Blue accent:          #3b82f6  (secondary actions, links)
+     Muted text:           #64748b
+     Body text:            #cbd5e1
+     Heading text:         #f1f5f9
+
+   Typography:
+     Syne — display headings (app header, section titles)
+     Inter — all body text and UI labels
+     DM Mono — PDB identifiers, numerical data, code values
+   ============================================================ */
+
+/* ---------- Reset & base ---------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 15px;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: #070b14;
+  color: #cbd5e1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Screen-reader only — used for hidden labels that assist AT users */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Mono font utility — PDB IDs, numeric data */
+.mono {
+  font-family: 'DM Mono', 'Fira Mono', monospace;
+  letter-spacing: 0.03em;
+}
+
+/* ---------- App header ---------- */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.25rem;
+  height: 48px;
+  background: #0a1020;
+  border-bottom: 1px solid #1e2d4a;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.brand-name {
+  font-family: 'Syne', sans-serif;
+  font-weight: 800;
+  font-size: 1.2rem;
+  color: #22d3ee;
+  letter-spacing: -0.01em;
+}
+
+.brand-tag {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: #3b82f6;
+  background: rgba(59, 130, 246, 0.12);
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.header-tagline {
+  font-size: 0.75rem;
+  color: #475569;
+  font-style: italic;
+}
+
+/* ---------- Three-panel layout ---------- */
+.app-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr 280px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ---------- Panel base ---------- */
+.panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 1px solid #1e2d4a;
+}
+
+.panel--controls {
+  background: #0d1525;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: #1e2d4a transparent;
+}
+
+.panel--controls::-webkit-scrollbar { width: 4px; }
+.panel--controls::-webkit-scrollbar-track { background: transparent; }
+.panel--controls::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 2px; }
+
+.panel--viewport {
+  position: relative;
+  background: #070b14;
+  border-right: 1px solid #1e2d4a;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel--metadata {
+  background: #0d1525;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: none;
+  scrollbar-width: thin;
+  scrollbar-color: #1e2d4a transparent;
+}
+
+.panel--metadata::-webkit-scrollbar { width: 4px; }
+.panel--metadata::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 2px; }
+
+/* ---------- Panel sections (left panel) ---------- */
+.panel-section {
+  padding: 1rem 1rem 0.75rem;
+  border-bottom: 1px solid #1a2540;
+}
+
+.panel-section:last-child {
+  border-bottom: none;
+}
+
+.section-heading {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #3b82f6;
+  margin-bottom: 0.65rem;
+}
+
+.section-hint {
+  font-size: 0.72rem;
+  color: #475569;
+  line-height: 1.4;
+  margin-bottom: 0.65rem;
+}
+
+/* ---------- Inputs ---------- */
+.input-group {
+  margin-bottom: 0.75rem;
+}
+
+.input-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 0.3rem;
+}
+
+.input-hint {
+  display: block;
+  font-size: 0.65rem;
+  color: #475569;
+  margin-top: 0.25rem;
+}
+
+.input-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.text-input {
+  flex: 1;
+  background: #0a1020;
+  border: 1px solid #1e2d4a;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-family: inherit;
+  padding: 0.4rem 0.6rem;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  outline: none;
+  min-width: 0;
+}
+
+.text-input:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+}
+
+.text-input--mono {
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.text-input::placeholder { color: #334155; }
+
+/* ---------- Selects ---------- */
+.select {
+  width: 100%;
+  background: #0a1020;
+  border: 1px solid #1e2d4a;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 0.82rem;
+  font-family: inherit;
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748b'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  padding-right: 1.8rem;
+}
+
+.select:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 2px rgba(34, 211, 238, 0.15);
+}
+
+.select--compact {
+  width: auto;
+  font-size: 0.75rem;
+  padding: 0.3rem 1.6rem 0.3rem 0.5rem;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 0.75rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.15s, box-shadow 0.15s, opacity 0.15s;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.btn:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: #22d3ee;
+  color: #070b14;
+  font-weight: 600;
+}
+.btn--primary:hover { background: #38e8ff; box-shadow: 0 0 10px rgba(34,211,238,0.3); }
+
+.btn--accent {
+  background: #3b82f6;
+  color: #fff;
+  font-weight: 600;
+}
+.btn--accent:hover { background: #60a5fa; box-shadow: 0 0 10px rgba(59,130,246,0.3); }
+
+.btn--ghost {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid #1e2d4a;
+}
+.btn--ghost:hover { background: rgba(255,255,255,0.04); color: #e2e8f0; border-color: #334155; }
+
+.btn--view {
+  background: #111827;
+  color: #94a3b8;
+  border: 1px solid #1e2d4a;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.65rem;
+}
+.btn--view:hover { background: #1a2540; color: #e2e8f0; }
+.btn--view[aria-pressed="true"] { color: #22d3ee; border-color: #22d3ee; background: rgba(34,211,238,0.08); }
+
+.btn--quick {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #0a1020;
+  border: 1px solid #1e2d4a;
+  color: #94a3b8;
+  padding: 0.5rem 0.4rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  gap: 0.2rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: inherit;
+}
+.btn--quick:hover {
+  border-color: #22d3ee;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.06);
+}
+.btn--quick .mono { font-size: 0.78rem; font-weight: 500; }
+.quick-desc { font-size: 0.62rem; color: #475569; }
+
+.btn--measure {
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+  font-size: 0.78rem;
+}
+.btn--measure:hover { background: rgba(34, 211, 238, 0.15); }
+.btn--measure[aria-pressed="true"] {
+  background: rgba(34, 211, 238, 0.2);
+  border-color: #22d3ee;
+  box-shadow: 0 0 8px rgba(34,211,238,0.2);
+}
+
+.btn--outline-mono {
+  background: transparent;
+  border: 1px solid #22d3ee;
+  color: #22d3ee;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn--outline-mono:hover { background: rgba(34,211,238,0.1); }
+.btn--outline-mono:focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+
+.btn--icon-only {
+  background: transparent;
+  border: none;
+  color: #475569;
+  padding: 0.25rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.btn--icon-only:hover { color: #94a3b8; background: rgba(255,255,255,0.05); }
+
+.btn--full { width: 100%; }
+
+/* ---------- Button row layouts ---------- */
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.quick-load-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+
+/* ---------- Control row (label + compact select) ---------- */
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.control-row .input-label { margin-bottom: 0; }
+
+/* ---------- Chain toggles ---------- */
+.chain-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chain-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+  padding: 0.25rem 0.1rem;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+.chain-toggle:hover { background: rgba(255,255,255,0.03); }
+
+.chain-toggle input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: #22d3ee;
+  cursor: pointer;
+}
+
+.chain-toggle-label {
+  font-family: 'DM Mono', monospace;
+  color: #94a3b8;
+}
+
+.chain-toggle-count {
+  font-size: 0.68rem;
+  color: #475569;
+  margin-left: auto;
+}
+
+/* ---------- Search results ---------- */
+.search-results {
+  margin-top: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #1e2d4a;
+  border-radius: 6px;
+  background: #0a1020;
+}
+
+.search-result-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  cursor: pointer;
+  border-bottom: 1px solid #1a2540;
+  transition: background 0.1s;
+  font-size: 0.78rem;
+}
+
+.search-result-item:last-child { border-bottom: none; }
+.search-result-item:hover { background: rgba(34, 211, 238, 0.05); }
+.search-result-item:focus { outline: 2px solid #22d3ee; outline-offset: -2px; }
+
+.search-result-id {
+  font-family: 'DM Mono', monospace;
+  color: #22d3ee;
+  font-size: 0.8rem;
+  min-width: 40px;
+}
+
+/* ---------- Measurement ---------- */
+.measure-status {
+  font-size: 0.75rem;
+  color: #22d3ee;
+  padding: 0.4rem 0;
+  font-style: italic;
+}
+
+.measure-result {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.9rem;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.08);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 6px;
+  padding: 0.5rem 0.7rem;
+  margin-top: 0.4rem;
+}
+
+/* ============================================================
+   3D VIEWPORT PANEL
+   ============================================================ */
+.ngl-viewport {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  position: relative;
+}
+
+/* NGL creates a canvas inside this div — make sure the canvas fills it */
+.ngl-viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ---------- Loading overlay ---------- */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 11, 20, 0.92);
+  z-index: 20;
+  gap: 1rem;
+}
+
+/* DNA double helix loading animation.
+   I position each dot using nth-child rules with pre-computed values from
+   sin(i * 36°) rather than using the CSS sin() function, which only landed
+   in Chrome 111 (March 2023) and would silently break on any slightly older
+   browser. Pre-computing avoids the runtime dependency entirely.
+
+   The helix effect comes from combining fixed horizontal positions (the sine
+   wave) with a horizontal swing animation that has a per-dot delay — this
+   makes adjacent dots appear to chase each other in opposite phases. */
+.dna-loader {
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dna-helix {
+  position: relative;
+  width: 60px;
+  height: 80px;
+}
+
+.dna-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  top: calc(var(--i) * 8px);
+  /* animation-delay uses --i which is set via inline style — this is safe
+     because CSS custom properties in calc() work in all modern browsers. */
+  animation: dna-swing 1.4s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 0.07s);
+}
+
+/* Pre-computed horizontal positions: left = 50% + 22px * sin(i * 36°).
+   sin values (rounded): 0°=0, 36°=0.588, 72°=0.951, 108°=0.951, 144°=0.588,
+   180°=0, 216°=-0.588, 252°=-0.951, 288°=-0.951, 324°=-0.588 */
+.dna-dot:nth-child(1)  { left: 50.0%; }
+.dna-dot:nth-child(2)  { left: 62.9%; }
+.dna-dot:nth-child(3)  { left: 70.9%; }
+.dna-dot:nth-child(4)  { left: 70.9%; }
+.dna-dot:nth-child(5)  { left: 62.9%; }
+.dna-dot:nth-child(6)  { left: 50.0%; }
+.dna-dot:nth-child(7)  { left: 37.1%; }
+.dna-dot:nth-child(8)  { left: 29.1%; }
+.dna-dot:nth-child(9)  { left: 29.1%; }
+.dna-dot:nth-child(10) { left: 37.1%; }
+
+/* Alternate cyan and blue for the two strands */
+.dna-dot:nth-child(odd)  { background: #22d3ee; box-shadow: 0 0 6px rgba(34,211,238,0.6); }
+.dna-dot:nth-child(even) { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.6); }
+
+@keyframes dna-swing {
+  0%, 100% { transform: translateX(0); opacity: 0.9; }
+  50%       { transform: translateX(-44px); opacity: 1; }
+}
+
+.loading-label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  letter-spacing: 0.05em;
+}
+
+/* Animated dots after "Loading structure" */
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s steps(3, end) infinite;
+}
+@keyframes loading-dots {
+  0%   { content: '.'; }
+  33%  { content: '..'; }
+  66%  { content: '...'; }
+  100% { content: ''; }
+}
+
+/* ---------- Error overlay ---------- */
+.error-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 11, 20, 0.9);
+  z-index: 25;
+}
+
+.error-card {
+  background: #0d1525;
+  border: 1px solid #ef4444;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 380px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.error-icon { color: #ef4444; }
+.error-message { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; }
+
+/* ---------- Empty state ---------- */
+.empty-state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* Allow the CTA buttons to be clickable even though the container is not */
+.empty-state .empty-cta { pointer-events: all; }
+.empty-state .btn--outline-mono { pointer-events: all; }
+
+.empty-dna {
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dna-float-svg {
+  width: 60px;
+  height: 160px;
+  animation: dna-float 3.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(34, 211, 238, 0.25));
+}
+
+@keyframes dna-float {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50%       { transform: translateY(-12px) rotate(2deg); }
+}
+
+/* Animate the strand paths for a flowing DNA effect */
+.float-strand-1 {
+  stroke-dasharray: 350;
+  stroke-dashoffset: 350;
+  animation: draw-strand 2.5s ease forwards, dna-glow 2s ease-in-out 2.5s infinite alternate;
+}
+
+.float-strand-2 {
+  stroke-dasharray: 350;
+  stroke-dashoffset: -350;
+  animation: draw-strand-r 2.5s ease forwards 0.3s, dna-glow-b 2s ease-in-out 2.8s infinite alternate;
+}
+
+@keyframes draw-strand   { to { stroke-dashoffset: 0; } }
+@keyframes draw-strand-r { to { stroke-dashoffset: 0; } }
+
+@keyframes dna-glow {
+  from { filter: drop-shadow(0 0 2px rgba(34,211,238,0.3)); }
+  to   { filter: drop-shadow(0 0 6px rgba(34,211,238,0.7)); }
+}
+
+@keyframes dna-glow-b {
+  from { filter: drop-shadow(0 0 2px rgba(59,130,246,0.3)); }
+  to   { filter: drop-shadow(0 0 6px rgba(59,130,246,0.7)); }
+}
+
+.float-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+  transform-origin: center;
+}
+.float-dot--b { animation-delay: 0.5s; }
+.float-dot--c { animation-delay: 1s; }
+.float-dot--d { animation-delay: 1.5s; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.5; transform: scale(0.7); }
+}
+
+.empty-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.empty-body {
+  font-size: 0.82rem;
+  color: #475569;
+  max-width: 360px;
+  line-height: 1.5;
+}
+
+.empty-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+/* ---------- Atom hover tooltip ---------- */
+.atom-tooltip {
+  position: absolute;
+  background: rgba(13, 21, 37, 0.95);
+  border: 1px solid #22d3ee;
+  border-radius: 6px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.75rem;
+  font-family: 'DM Mono', monospace;
+  color: #e2e8f0;
+  pointer-events: none;
+  z-index: 30;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  max-width: 220px;
+}
+
+/* ---------- AlphaFold disclaimer banner ---------- */
+.af-disclaimer {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  border-radius: 6px;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.72rem;
+  color: #fbbf24;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 90%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Sequence viewer ---------- */
+.sequence-panel {
+  flex-shrink: 0;
+  background: #0a1020;
+  border-top: 1px solid #1e2d4a;
+  max-height: 120px;
+  transition: max-height 0.25s ease;
+}
+
+.sequence-panel.collapsed { max-height: 36px; overflow: hidden; }
+
+.sequence-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.75rem;
+  background: #0d1525;
+  border-bottom: 1px solid #1e2d4a;
+}
+
+.sequence-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  flex: 1;
+}
+
+.sequence-display {
+  padding: 0.5rem 0.75rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  cursor: default;
+  outline: none;
+  min-height: 50px;
+}
+
+/* Each residue span */
+.res {
+  display: inline-block;
+  padding: 1px 1.5px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.1s, transform 0.1s;
+  user-select: none;
+}
+
+.res:hover { filter: brightness(1.3); transform: scaleY(1.1); }
+.res:focus-visible { outline: 1px solid #fff; outline-offset: 1px; }
+.res.res--selected { outline: 1px solid #fff; background-color: rgba(255,255,255,0.2) !important; }
+
+/* Secondary structure colours for sequence display */
+.res--helix { color: #070b14; background: #f97316; }  /* orange */
+.res--sheet { color: #070b14; background: #eab308; }  /* yellow */
+.res--loop  { color: #94a3b8; background: #1e2d4a; }  /* muted */
+
+.sequence-legend {
+  display: flex;
+  gap: 1rem;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.65rem;
+  color: #475569;
+  border-top: 1px solid #1a2540;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.legend--helix { background: #f97316; }
+.legend--sheet { background: #eab308; }
+.legend--loop  { background: #1e2d4a; border: 1px solid #334155; }
+
+/* ============================================================
+   METADATA PANEL
+   ============================================================ */
+.meta-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 0.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.meta-placeholder p {
+  font-size: 0.8rem;
+  color: #334155;
+  line-height: 1.5;
+}
+
+.meta-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 0.6rem;
+  width: fit-content;
+}
+
+.source-badge--pdb {
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  color: #22d3ee;
+}
+
+.source-badge--alphafold {
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.2);
+  color: #fbbf24;
+}
+
+/* AlphaFold disclaimer block inside metadata panel */
+.meta-af-disclaimer {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  background: rgba(234, 179, 8, 0.07);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.72rem;
+  color: #fbbf24;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.meta-af-disclaimer strong { color: #fde68a; }
+.meta-af-disclaimer em     { color: #d97706; font-style: normal; }
+
+.meta-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.35;
+  margin-bottom: 0.85rem;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  margin-bottom: 0.5rem;
+  border: 1px solid #1a2540;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.meta-item {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid #1a2540;
+  border-right: 1px solid #1a2540;
+}
+
+.meta-item:nth-child(even) { border-right: none; }
+.meta-item:nth-last-child(-n+2) { border-bottom: none; }
+
+.meta-label {
+  display: block;
+  font-size: 0.63rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #475569;
+  margin-bottom: 0.2rem;
+}
+
+.meta-value {
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  word-break: break-word;
+  display: block;
+}
+
+.meta-value--em { font-style: italic; }
+
+/* ---------- Metadata sections ---------- */
+.meta-section {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #1a2540;
+}
+
+.meta-section:last-of-type { border-bottom: none; }
+
+.meta-section-heading {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #3b82f6;
+  margin-bottom: 0.6rem;
+}
+
+/* ---------- Secondary structure bar ---------- */
+.ss-bar-track {
+  display: flex;
+  height: 12px;
+  border-radius: 6px;
+  overflow: hidden;
+  margin-bottom: 0.6rem;
+  background: #1a2540;
+}
+
+.ss-segment {
+  height: 100%;
+  transition: width 0.4s ease;
+}
+
+.ss-segment--helix { background: #f97316; }
+.ss-segment--sheet { background: #eab308; }
+.ss-segment--loop  { background: #334155; }
+
+.ss-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ss-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.73rem;
+  color: #94a3b8;
+}
+
+.ss-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.ss-swatch--helix { background: #f97316; }
+.ss-swatch--sheet { background: #eab308; }
+.ss-swatch--loop  { background: #334155; border: 1px solid #475569; }
+
+/* ---------- Chain detail list ---------- */
+.chain-detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.chain-detail-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.77rem;
+  padding: 0.3rem 0;
+}
+
+.chain-id-badge {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  background: rgba(34, 211, 238, 0.1);
+  color: #22d3ee;
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  min-width: 26px;
+  text-align: center;
+}
+
+.chain-detail-stats {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ---------- Authors ---------- */
+.meta-authors {
+  font-size: 0.75rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+/* ---------- Links ---------- */
+.meta-links {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.meta-link {
+  font-size: 0.78rem;
+  color: #3b82f6;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: color 0.15s;
+}
+
+.meta-link:hover { color: #60a5fa; text-decoration: underline; }
+.meta-link:focus-visible { outline: 2px solid #3b82f6; outline-offset: 2px; border-radius: 2px; }
+.meta-link--af { color: #fbbf24; }
+.meta-link--af:hover { color: #fde68a; }
+
+/* ---------- Export button ---------- */
+.meta-content .btn--primary {
+  margin-top: 0.85rem;
+  font-size: 0.82rem;
+}
+
+/* ---------- Utility: hidden ---------- */
+[hidden] { display: none !important; }
+
+/* ---------- Focus visible global ---------- */
+:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
+
+/* Remove focus ring for mouse users while keeping it for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}

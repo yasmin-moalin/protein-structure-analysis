@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ProteinVis — Protein Structure Visualisation</title>
+  <meta name="description" content="Interactive 3D protein structure visualisation for education and research. Load structures from the RCSB Protein Data Bank or the AlphaFold Database.">
+
+  <!-- Google Fonts: Syne (display), Inter (body), DM Mono (identifiers/data).
+       I picked these three because they form a clear visual hierarchy — Syne's
+       wide letterforms work well for headings, Inter is optimised for UI text,
+       and DM Mono is readable at small sizes which matters for PDB IDs and
+       numeric data values. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- NGL Viewer (Rose et al., 2018) — loaded from CDN so users don't need
+       to install anything. NGL uses WebGL for hardware-accelerated rendering,
+       which is why the visualisation runs smoothly in a browser without any
+       native code. I use the 2.0.0-dev.37 release, the current stable version. -->
+  <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
+</head>
+<body>
+
+  <!-- App header -->
+  <header class="app-header" role="banner">
+    <div class="header-brand">
+      <span class="brand-name">ProteinVis</span>
+      <span class="brand-tag">COMP1682</span>
+    </div>
+    <p class="header-tagline">Interactive 3D Protein Structure Visualisation</p>
+  </header>
+
+  <!-- Three-panel main layout:
+       Controls left | 3D Viewport centre | Metadata right
+       This mirrors the layout pattern of professional tools like ChimeraX
+       (Goddard et al., 2018) and PyMOL but simplified for novice users
+       following the principles in Meyer and Dykes (2020). -->
+  <main class="app-layout" role="main" aria-label="Protein visualisation workspace">
+
+    <!-- ===== LEFT PANEL: Controls ===== -->
+    <aside class="panel panel--controls" aria-label="Visualisation controls">
+
+      <!-- Load section -->
+      <section class="panel-section" aria-labelledby="load-heading">
+        <h2 id="load-heading" class="section-heading">Load Structure</h2>
+
+        <div class="input-group">
+          <label for="pdb-input" class="input-label">PDB Identifier</label>
+          <div class="input-row">
+            <input type="text" id="pdb-input" class="text-input text-input--mono"
+                   placeholder="e.g. 4HHB" maxlength="4"
+                   aria-label="Enter 4-character PDB identifier"
+                   autocomplete="off" spellcheck="false"
+                   aria-describedby="pdb-hint">
+            <button id="load-pdb-btn" class="btn btn--primary"
+                    aria-label="Load PDB structure by identifier">Load</button>
+          </div>
+          <span id="pdb-hint" class="input-hint">4 characters, e.g. 1CRN, 4HHB</span>
+        </div>
+
+        <div class="input-group">
+          <label for="af-input" class="input-label">AlphaFold (UniProt)</label>
+          <div class="input-row">
+            <input type="text" id="af-input" class="text-input text-input--mono"
+                   placeholder="e.g. P68871" maxlength="10"
+                   aria-label="Enter UniProt accession to load AlphaFold prediction"
+                   autocomplete="off" spellcheck="false"
+                   aria-describedby="af-hint">
+            <button id="load-af-btn" class="btn btn--accent"
+                    aria-label="Load AlphaFold predicted structure">Load</button>
+          </div>
+          <span id="af-hint" class="input-hint">UniProt accession, e.g. P68871</span>
+        </div>
+
+        <div class="input-group">
+          <label for="search-input" class="input-label">Search PDB</label>
+          <div class="input-row">
+            <input type="search" id="search-input" class="text-input"
+                   placeholder="e.g. haemoglobin, insulin"
+                   aria-label="Search the Protein Data Bank by name or keyword"
+                   autocomplete="off">
+            <button id="search-btn" class="btn btn--ghost"
+                    aria-label="Run search">Go</button>
+          </div>
+        </div>
+
+        <div id="search-results" class="search-results" aria-live="polite"
+             aria-label="Search results — click to load a structure" hidden></div>
+      </section>
+
+      <!-- Quick load examples -->
+      <section class="panel-section" aria-labelledby="quick-heading">
+        <h2 id="quick-heading" class="section-heading">Quick Load</h2>
+        <div class="quick-load-grid" role="list">
+          <button class="btn btn--quick" data-pdb="1CRN" role="listitem"
+                  aria-label="Load crambin — small plant protein, 46 residues (1CRN)">
+            <span class="mono">1CRN</span><span class="quick-desc">Crambin</span>
+          </button>
+          <button class="btn btn--quick" data-pdb="4HHB" role="listitem"
+                  aria-label="Load oxyhaemoglobin — classic tetrameric oxygen carrier (4HHB)">
+            <span class="mono">4HHB</span><span class="quick-desc">Haemoglobin</span>
+          </button>
+          <button class="btn btn--quick" data-pdb="1TIM" role="listitem"
+                  aria-label="Load triosephosphate isomerase — canonical TIM barrel fold (1TIM)">
+            <span class="mono">1TIM</span><span class="quick-desc">TIM Barrel</span>
+          </button>
+          <button class="btn btn--quick" data-pdb="2HHB" role="listitem"
+                  aria-label="Load deoxyhaemoglobin — T-state structure (2HHB)">
+            <span class="mono">2HHB</span><span class="quick-desc">Deoxy Hb</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Representation -->
+      <section class="panel-section" aria-labelledby="repr-heading">
+        <h2 id="repr-heading" class="section-heading">Representation</h2>
+        <select id="representation-select" class="select"
+                aria-label="Choose 3D representation style">
+          <option value="cartoon">Cartoon (ribbon)</option>
+          <option value="surface">Molecular surface</option>
+          <option value="ball+stick">Ball and stick</option>
+          <option value="licorice">Licorice</option>
+          <option value="backbone">Backbone trace</option>
+          <option value="spacefill">Spacefill (CPK)</option>
+        </select>
+      </section>
+
+      <!-- Colour scheme -->
+      <section class="panel-section" aria-labelledby="colour-heading">
+        <h2 id="colour-heading" class="section-heading">Colour Scheme</h2>
+        <select id="colour-select" class="select"
+                aria-label="Choose colour scheme for the 3D structure">
+          <option value="chainid">By chain</option>
+          <option value="sstruc">Secondary structure</option>
+          <option value="bfactor">B-factor / confidence</option>
+          <option value="hydrophobicity">Hydrophobicity</option>
+          <option value="element">By element (CPK)</option>
+        </select>
+      </section>
+
+      <!-- Chain visibility — populated dynamically after load -->
+      <section class="panel-section" id="chain-section" aria-labelledby="chain-heading" hidden>
+        <h2 id="chain-heading" class="section-heading">Chain Visibility</h2>
+        <div id="chain-toggles" class="chain-toggles" aria-live="polite"
+             aria-label="Toggle individual chain visibility"></div>
+      </section>
+
+      <!-- View controls -->
+      <section class="panel-section" aria-labelledby="view-heading">
+        <h2 id="view-heading" class="section-heading">View Controls</h2>
+
+        <div class="control-row">
+          <label for="bg-select" class="input-label">Background</label>
+          <select id="bg-select" class="select select--compact"
+                  aria-label="Choose background colour">
+            <option value="#070b14">Deep Navy</option>
+            <option value="#000000">Black</option>
+            <option value="#1a1a2e">Dark Blue</option>
+            <option value="#ffffff">White</option>
+          </select>
+        </div>
+
+        <div class="btn-row">
+          <button id="centre-btn" class="btn btn--view" title="Centre structure"
+                  aria-label="Centre the structure in the viewport">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+            Centre
+          </button>
+          <button id="spin-btn" class="btn btn--view" title="Toggle auto-spin"
+                  aria-label="Toggle auto-rotation" aria-pressed="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3"/></svg>
+            Spin
+          </button>
+          <button id="screenshot-btn" class="btn btn--view" title="Save screenshot"
+                  aria-label="Download screenshot of the current view">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            Screenshot
+          </button>
+        </div>
+      </section>
+
+      <!-- Distance measurement -->
+      <section class="panel-section" aria-labelledby="measure-heading">
+        <h2 id="measure-heading" class="section-heading">Distance Measurement</h2>
+        <p class="section-hint">Click two atoms in the viewport to measure the distance between them in Ångströms.</p>
+        <div class="btn-row">
+          <button id="measure-btn" class="btn btn--measure"
+                  aria-label="Enter distance measurement mode — click two atoms"
+                  aria-pressed="false">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M2 12h20M2 6l4 6-4 6M22 6l-4 6 4 6"/></svg>
+            Measure
+          </button>
+          <button id="clear-measure-btn" class="btn btn--ghost" hidden
+                  aria-label="Clear distance measurement and exit measure mode">Clear</button>
+        </div>
+        <div id="measure-status" class="measure-status" role="status" aria-live="polite" hidden></div>
+        <div id="measure-result" class="measure-result" aria-live="assertive" hidden></div>
+      </section>
+
+    </aside>
+
+    <!-- ===== CENTRE PANEL: 3D Viewport ===== -->
+    <div class="panel panel--viewport">
+
+      <!-- Loading overlay -->
+      <div id="loading-overlay" class="loading-overlay" role="status"
+           aria-label="Loading protein structure, please wait" hidden>
+        <div class="dna-loader" aria-hidden="true">
+          <div class="dna-helix">
+            <span class="dna-dot" style="--i:0"></span>
+            <span class="dna-dot" style="--i:1"></span>
+            <span class="dna-dot" style="--i:2"></span>
+            <span class="dna-dot" style="--i:3"></span>
+            <span class="dna-dot" style="--i:4"></span>
+            <span class="dna-dot" style="--i:5"></span>
+            <span class="dna-dot" style="--i:6"></span>
+            <span class="dna-dot" style="--i:7"></span>
+            <span class="dna-dot" style="--i:8"></span>
+            <span class="dna-dot" style="--i:9"></span>
+          </div>
+        </div>
+        <p class="loading-label">Loading structure<span class="loading-dots" aria-hidden="true"></span></p>
+      </div>
+
+      <!-- Error overlay -->
+      <div id="error-overlay" class="error-overlay" role="alert" aria-atomic="true" hidden>
+        <div class="error-card">
+          <svg class="error-icon" width="36" height="36" viewBox="0 0 24 24" fill="none"
+               stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <p id="error-message" class="error-message"></p>
+          <button id="error-close-btn" class="btn btn--primary" aria-label="Dismiss this error">Dismiss</button>
+        </div>
+      </div>
+
+      <!-- Empty state — shown before any structure is loaded -->
+      <div id="empty-state" class="empty-state" aria-label="No structure loaded — use the controls on the left to load one">
+        <div class="empty-dna" aria-hidden="true">
+          <svg viewBox="0 0 100 260" class="dna-float-svg" xmlns="http://www.w3.org/2000/svg">
+            <path class="float-strand-1"
+              d="M 20 10 C 60 30 40 70 80 90 C 110 105 90 145 80 170 C 65 200 40 225 75 250"
+              fill="none" stroke="#22d3ee" stroke-width="2.5" stroke-linecap="round"/>
+            <path class="float-strand-2"
+              d="M 80 10 C 40 30 60 70 20 90 C -10 105 10 145 20 170 C 35 200 60 225 25 250"
+              fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round"/>
+            <line x1="28" y1="26" x2="72" y2="26" stroke="#22d3ee" stroke-width="1.5" opacity="0.5"/>
+            <line x1="72" y1="58" x2="28" y2="58" stroke="#3b82f6" stroke-width="1.5" opacity="0.5"/>
+            <line x1="26" y1="90" x2="74" y2="90" stroke="#22d3ee" stroke-width="1.5" opacity="0.5"/>
+            <line x1="70" y1="122" x2="30" y2="122" stroke="#3b82f6" stroke-width="1.5" opacity="0.5"/>
+            <line x1="28" y1="154" x2="72" y2="154" stroke="#22d3ee" stroke-width="1.5" opacity="0.5"/>
+            <line x1="65" y1="186" x2="35" y2="186" stroke="#3b82f6" stroke-width="1.5" opacity="0.5"/>
+            <line x1="35" y1="218" x2="70" y2="218" stroke="#22d3ee" stroke-width="1.5" opacity="0.5"/>
+            <circle cx="20" cy="10" r="3.5" fill="#22d3ee" class="float-dot"/>
+            <circle cx="80" cy="10" r="3.5" fill="#3b82f6" class="float-dot float-dot--b"/>
+            <circle cx="80" cy="90" r="3.5" fill="#22d3ee" class="float-dot float-dot--c"/>
+            <circle cx="20" cy="90" r="3.5" fill="#3b82f6" class="float-dot float-dot--d"/>
+          </svg>
+        </div>
+        <h2 class="empty-title">No structure loaded</h2>
+        <p class="empty-body">Enter a PDB identifier or UniProt accession in the left panel, or try one of the examples below.</p>
+        <div class="empty-cta">
+          <button class="btn btn--outline-mono" data-pdb="1CRN"
+                  aria-label="Load crambin (1CRN), a small 46-residue plant protein">
+            <span class="mono">1CRN</span> · Crambin
+          </button>
+          <button class="btn btn--outline-mono" data-pdb="4HHB"
+                  aria-label="Load haemoglobin (4HHB), the classic oxygen-carrying protein">
+            <span class="mono">4HHB</span> · Haemoglobin
+          </button>
+          <button class="btn btn--outline-mono" data-pdb="1TIM"
+                  aria-label="Load triosephosphate isomerase (1TIM), canonical TIM barrel">
+            <span class="mono">1TIM</span> · TIM Barrel
+          </button>
+        </div>
+      </div>
+
+      <!-- NGL WebGL viewport container -->
+      <div id="viewport" class="ngl-viewport"
+           role="img"
+           aria-label="3D protein structure viewer — rotate with left mouse button, zoom with scroll wheel, pan with right mouse button"></div>
+
+      <!-- Atom hover tooltip — positioned absolute relative to viewport -->
+      <div id="atom-tooltip" class="atom-tooltip" role="tooltip" aria-live="polite" hidden></div>
+
+      <!-- AlphaFold disclaimer banner — shown only for predicted structures -->
+      <div id="af-disclaimer" class="af-disclaimer" role="note" aria-live="polite" hidden>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+        <span>Predicted structure (AlphaFold) — not experimentally determined. B-factor column = pLDDT confidence score.</span>
+      </div>
+
+      <!-- Sequence viewer — collapsible strip at bottom of viewport -->
+      <div id="sequence-panel" class="sequence-panel" hidden>
+        <div class="sequence-header">
+          <h3 class="sequence-title">Amino Acid Sequence</h3>
+          <label for="sequence-chain-select" class="sr-only">Select chain</label>
+          <select id="sequence-chain-select" class="select select--compact"
+                  aria-label="Select chain to display sequence for"></select>
+          <button id="seq-collapse-btn" class="btn btn--icon-only" aria-expanded="true"
+                  aria-controls="sequence-display" aria-label="Collapse sequence viewer">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+              <polyline points="18 15 12 9 6 15"/>
+            </svg>
+          </button>
+        </div>
+        <div id="sequence-display" class="sequence-display"
+             tabindex="0"
+             role="region"
+             aria-label="Amino acid sequence — click a residue to highlight it in the 3D viewport"></div>
+        <div class="sequence-legend" aria-label="Sequence colour key">
+          <span class="legend-item"><span class="legend-swatch legend--helix" aria-hidden="true"></span>α-Helix</span>
+          <span class="legend-item"><span class="legend-swatch legend--sheet" aria-hidden="true"></span>β-Sheet</span>
+          <span class="legend-item"><span class="legend-swatch legend--loop" aria-hidden="true"></span>Loop / coil</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ===== RIGHT PANEL: Metadata ===== -->
+    <aside class="panel panel--metadata" aria-label="Structure metadata and analysis">
+
+      <div id="metadata-placeholder" class="meta-placeholder">
+        <div class="meta-placeholder-icon" aria-hidden="true">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" opacity="0.3">
+            <circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/>
+          </svg>
+        </div>
+        <p>Load a structure to view metadata and analysis</p>
+      </div>
+
+      <div id="metadata-content" class="meta-content" hidden>
+
+        <!-- Source badge -->
+        <div id="source-badge" class="source-badge" aria-live="polite"></div>
+
+        <!-- AlphaFold disclaimer inside the metadata panel.
+             This supplements the viewport banner — the banner is a visual cue
+             while scrolling the metadata; this block ensures the disclaimer is
+             present in context alongside the structure's metadata fields,
+             satisfying the requirement that predicted structures are clearly
+             distinguished from experimental ones at all times. -->
+        <div id="meta-af-disclaimer" class="meta-af-disclaimer" role="note"
+             aria-label="AlphaFold prediction notice" hidden>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex-shrink:0;margin-top:1px">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+          <div>
+            <strong>Predicted structure</strong> — not experimentally determined.
+            B-factor column encodes pLDDT confidence scores: &gt;90 high confidence, &lt;50 low confidence.
+            <em>Cite: Jumper et al. (2021), Nature 596, 583–589.</em>
+          </div>
+        </div>
+
+        <!-- Title -->
+        <h2 id="meta-title" class="meta-title"></h2>
+
+        <!-- Stats grid -->
+        <dl class="meta-grid" aria-label="Structure statistics">
+          <div class="meta-item">
+            <dt class="meta-label">Organism</dt>
+            <dd id="meta-organism" class="meta-value meta-value--em"></dd>
+          </div>
+          <div class="meta-item">
+            <dt class="meta-label">Method</dt>
+            <dd id="meta-method" class="meta-value"></dd>
+          </div>
+          <div class="meta-item">
+            <dt class="meta-label">Resolution</dt>
+            <dd id="meta-resolution" class="meta-value mono"></dd>
+          </div>
+          <div class="meta-item">
+            <dt class="meta-label">Total Atoms</dt>
+            <dd id="meta-atoms" class="meta-value mono"></dd>
+          </div>
+          <div class="meta-item">
+            <dt class="meta-label">Chains</dt>
+            <dd id="meta-chains" class="meta-value mono"></dd>
+          </div>
+          <div class="meta-item">
+            <dt class="meta-label">Residues</dt>
+            <dd id="meta-residues" class="meta-value mono"></dd>
+          </div>
+        </dl>
+
+        <!-- Secondary structure breakdown -->
+        <section class="meta-section" aria-labelledby="ss-heading">
+          <h3 id="ss-heading" class="meta-section-heading">Secondary Structure</h3>
+          <div class="ss-bar-track" role="img" aria-label="Secondary structure composition bar">
+            <div id="ss-bar-helix" class="ss-segment ss-segment--helix" role="presentation"></div>
+            <div id="ss-bar-sheet" class="ss-segment ss-segment--sheet" role="presentation"></div>
+            <div id="ss-bar-loop"  class="ss-segment ss-segment--loop"  role="presentation"></div>
+          </div>
+          <ul class="ss-legend" aria-label="Secondary structure percentages">
+            <li class="ss-item">
+              <span class="ss-swatch ss-swatch--helix" aria-hidden="true"></span>
+              α-Helix <strong id="ss-helix-pct" class="mono"></strong>
+            </li>
+            <li class="ss-item">
+              <span class="ss-swatch ss-swatch--sheet" aria-hidden="true"></span>
+              β-Sheet <strong id="ss-sheet-pct" class="mono"></strong>
+            </li>
+            <li class="ss-item">
+              <span class="ss-swatch ss-swatch--loop" aria-hidden="true"></span>
+              Loop / coil <strong id="ss-loop-pct" class="mono"></strong>
+            </li>
+          </ul>
+        </section>
+
+        <!-- Per-chain details -->
+        <section class="meta-section" aria-labelledby="chain-detail-heading">
+          <h3 id="chain-detail-heading" class="meta-section-heading">Chain Details</h3>
+          <div id="chain-detail-list" class="chain-detail-list" aria-live="polite"></div>
+        </section>
+
+        <!-- Authors -->
+        <section class="meta-section" id="authors-section" aria-labelledby="authors-heading">
+          <h3 id="authors-heading" class="meta-section-heading">Authors</h3>
+          <p id="meta-authors" class="meta-authors"></p>
+        </section>
+
+        <!-- External links -->
+        <section class="meta-section" aria-labelledby="links-heading">
+          <h3 id="links-heading" class="meta-section-heading">External Links</h3>
+          <div class="meta-links">
+            <a id="rcsb-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="meta-link" aria-label="Open this entry on RCSB PDB website" hidden>
+              View on RCSB PDB ↗
+            </a>
+            <a id="af-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="meta-link meta-link--af" aria-label="Open this entry on AlphaFold Database" hidden>
+              View on AlphaFold DB ↗
+            </a>
+          </div>
+        </section>
+
+        <!-- Export -->
+        <button id="export-btn" class="btn btn--primary btn--full"
+                aria-label="Download structure metadata as a JSON file">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Export Metadata (JSON)
+        </button>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- Screen-reader only utility class is defined in CSS -->
+  <script src="main.js"></script>
+</body>
+</html>
