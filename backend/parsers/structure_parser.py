@@ -1,23 +1,11 @@
 from __future__ import annotations
 
 """
-structure_parser.py — PDB file parsing only, no network calls
+structure_parser.py: PDB file parsing, no network calls
 
-This module's only job is to read PDB text and extract information from it.
-I keep it strictly isolated from network calls and Flask so that it can be
-tested independently by passing in a PDB string directly.
-
-PDB format is old — it dates to 1971 and uses fixed-column records, which
-makes it tedious to parse manually. I combine Biopython's PDBParser for
-structural data (atoms, chains, residues, polypeptide chains) with manual
-line parsing for header records like HELIX, SHEET, AUTHOR, SOURCE, and
-EXPDTA. Biopython doesn't expose all of these cleanly, and its fixed-column
-assumptions sometimes miss edge cases in real-world files.
-
-The hybrid approach means I get reliability from Biopython where it matters
-(atom coordinates, residue identity) and flexibility from direct parsing
-where Biopython's abstractions get in the way (secondary structure records,
-organism extraction).
+I combine Biopython's PDBParser for structural data (atoms, chains, residues)
+with manual line parsing for header records like HELIX, SHEET, SOURCE, and
+EXPDTA that Biopython doesn't expose cleanly.
 """
 
 import io
@@ -38,8 +26,8 @@ AA_THREE_TO_ONE: dict[str, str] = {
     "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I",
     "LEU": "L", "LYS": "K", "MET": "M", "PHE": "F", "PRO": "P",
     "SER": "S", "THR": "T", "TRP": "W", "TYR": "Y", "VAL": "V",
-    "SEC": "U", "PYL": "O",  # selenocysteine and pyrrolysine — uncommon but valid
-    "MSE": "M",              # selenomethionine — common in X-ray structures
+    "SEC": "U", "PYL": "O",  # selenocysteine and pyrrolysine (uncommon but valid)
+    "MSE": "M",              # selenomethionine (common in X-ray structures)
 }
 
 
@@ -47,11 +35,7 @@ def parse_pdb_text(pdb_text: str) -> dict:
     """
     Parse a complete PDB file string and return all extracted data.
 
-    Returns a single dict so the service layer has one thing to deal with
-    rather than calling multiple parse functions. Everything the frontend
-    needs — metadata, per-chain sequences with secondary structure annotation,
-    atom counts, secondary structure breakdown percentages — comes back from
-    this one call.
+    Returns one dict so the service layer has a single thing to deal with.
     """
     structure = _load_biopython_structure(pdb_text)
     ss_residues = _parse_helix_sheet_records(pdb_text)
@@ -68,6 +52,7 @@ def parse_pdb_text(pdb_text: str) -> dict:
         "method": _extract_method(pdb_text),
         "sequence": sequences,
         "secondary_structure": _calculate_ss_breakdown(structure, ss_residues),
+        "ligands": _extract_ligands(structure),
     }
 
 
@@ -75,10 +60,8 @@ def _load_biopython_structure(pdb_text: str) -> Structure:
     """
     Parse the PDB text into a Biopython Structure object.
 
-    QUIET=True suppresses warnings because real-world PDB files are
-    notoriously noisy — missing atoms, non-standard residues, duplicate
-    chain IDs in biological assemblies. These warnings don't affect the
-    data I care about and would flood the logs during normal use.
+    QUIET=True suppresses warnings because real PDB files are noisy (missing atoms,
+    non-standard residues) and those warnings don't affect my output.
     """
     parser = PDBParser(QUIET=True)
     return parser.get_structure("protein", io.StringIO(pdb_text))
@@ -104,10 +87,8 @@ def _get_chain_details(structure: Structure) -> list[dict]:
     """
     Build per-chain summary: chain ID, standard residue count, atom count.
 
-    I filter to residues where hetfield == ' ' (space) to exclude water
-    molecules (HOH) and small molecule ligands from the residue count.
-    The count I show the user should mean 'amino acid residues', not
-    'everything in the chain', which would be misleading.
+    I filter to hetfield == ' ' to exclude water and ligands so the residue
+    count means amino acids only.
     """
     details = []
     for model in structure:
@@ -123,13 +104,7 @@ def _get_chain_details(structure: Structure) -> list[dict]:
 
 
 def _extract_resolution(pdb_text: str) -> Optional[float]:
-    """
-    Extract crystallographic resolution from REMARK 2 records.
-
-    REMARK 2 is the standard location for this value in PDB format.
-    NMR and predicted structures don't have resolution — I return None
-    and handle it gracefully in the frontend with 'N/A'.
-    """
+    """Extract crystallographic resolution from REMARK 2. Returns None for NMR/predicted."""
     for line in pdb_text.splitlines():
         if line.startswith("REMARK   2 RESOLUTION."):
             tokens = line.split()
@@ -146,10 +121,9 @@ def _extract_organism(pdb_text: str) -> Optional[str]:
     """
     Extract the scientific organism name from SOURCE records.
 
-    SOURCE records use a key: value format with semicolons between fields.
-    I look for ORGANISM_SCIENTIFIC because the common name field
-    (ORGANISM_COMMON) isn't always present, but scientific name always is.
-    SOURCE can span multiple continuation lines, so I concatenate them first.
+    SOURCE spans multiple lines so I concatenate them, then pull the
+    ORGANISM_SCIENTIFIC field (scientific name is always present; common
+    name isn't).
     """
     source_parts = []
     for line in pdb_text.splitlines():
@@ -162,20 +136,14 @@ def _extract_organism(pdb_text: str) -> Optional[str]:
         start = source_text.index("ORGANISM_SCIENTIFIC:") + len("ORGANISM_SCIENTIFIC:")
         end = source_text.find(";", start)
         organism = source_text[start:end].strip() if end != -1 else source_text[start:].strip()
-        # PDB sometimes uses title case within the field — normalise
+        # PDB sometimes uses title case within this field, strip it
         return organism.strip(" ;") or None
 
     return None
 
 
 def _extract_authors(pdb_text: str) -> list[str]:
-    """
-    Extract author names from AUTHOR records.
-
-    AUTHOR records are comma-separated in columns 11–79. Multi-line entries
-    are standard for structures with many co-authors, so I concatenate
-    continuation lines before splitting on commas.
-    """
+    """Extract author names from AUTHOR records (comma-separated, may span multiple lines)."""
     author_lines = []
     for line in pdb_text.splitlines():
         if line.startswith("AUTHOR"):
@@ -189,12 +157,7 @@ def _extract_authors(pdb_text: str) -> list[str]:
 
 
 def _extract_title(pdb_text: str) -> Optional[str]:
-    """
-    Extract and concatenate TITLE records.
-
-    PDB TITLE lines wrap at column 79, so multi-word titles span several
-    continuation lines. I join them into a single clean string.
-    """
+    """Extract and join TITLE records (they wrap at column 79)."""
     title_parts = []
     for line in pdb_text.splitlines():
         if line.startswith("TITLE"):
@@ -203,14 +166,7 @@ def _extract_title(pdb_text: str) -> Optional[str]:
 
 
 def _extract_method(pdb_text: str) -> Optional[str]:
-    """
-    Extract the experimental method from the EXPDTA record.
-
-    Typical values: X-RAY DIFFRACTION, SOLUTION NMR, ELECTRON MICROSCOPY.
-    This tells the user whether they're looking at an experimental structure
-    or (in the AlphaFold case) a prediction — an important distinction for
-    scientific literacy.
-    """
+    """Extract the experimental method from EXPDTA (e.g. X-RAY DIFFRACTION, NMR)."""
     for line in pdb_text.splitlines():
         if line.startswith("EXPDTA"):
             return line[10:].strip()
@@ -219,24 +175,12 @@ def _extract_method(pdb_text: str) -> Optional[str]:
 
 def _parse_helix_sheet_records(pdb_text: str) -> dict[tuple, str]:
     """
-    Parse HELIX and SHEET records and return a mapping of (chain_id, seq_num)
-    to secondary structure type: 'H' for helix, 'E' for extended/sheet.
+    Parse HELIX and SHEET records into a (chain_id, seq_num) -> 'H'/'E' map.
 
-    I use HELIX/SHEET records from the PDB header rather than running a DSSP
-    calculation because DSSP requires an external binary — adding a system
-    dependency to install an executable is not reasonable for a browser-based
-    tool aimed at novice users. The PDB author-assigned secondary structure is
-    what ChimeraX and PyMOL also use for their ribbon representations by
-    default, so my annotations will be consistent with what users see in
-    professional tools.
-
-    PDB HELIX column layout (1-indexed):
-      col 20: initChainID, cols 22-25: initSeqNum
-      col 32: endChainID,  cols 34-37: endSeqNum
-
-    PDB SHEET column layout (1-indexed):
-      col 22: initChainID, cols 23-26: initSeqNum
-      col 33: endChainID,  cols 34-37: endSeqNum
+    I use the PDB header records rather than DSSP because DSSP needs an
+    external binary. The fixed-column positions are:
+      HELIX: chain col 20, start cols 22-25, end cols 34-37
+      SHEET: chain col 22, start cols 23-26, end cols 34-37
     """
     ss_map: dict[tuple, str] = {}
 
@@ -266,20 +210,13 @@ def _parse_helix_sheet_records(pdb_text: str) -> dict[tuple, str]:
 
 def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str, dict]:
     """
-    Build per-chain sequence data from ATOM records, annotated with
-    secondary structure assignments from the HELIX/SHEET map.
+    Build per-chain sequence data from ATOM records, annotated with secondary structure.
 
-    I use Biopython's PPBuilder (polypeptide peptide builder) rather than
-    SEQRES records because SEQRES lists all residues in the sequence
-    regardless of whether they're structurally resolved, whereas PPBuilder
-    only includes residues that are actually present in ATOM records. The
-    sequence the user sees should match the residues visible in the 3D view,
-    not residues that were disordered and missing from the electron density.
+    I use PPBuilder rather than SEQRES so only structurally resolved residues
+    are included, matching what's visible in the 3D view.
 
-    Returns a dict keyed by chain ID, each containing:
-      - 'residues': list of { one_letter, three_letter, seq_num, ss } dicts
-      - 'sequence_string': concatenated one-letter codes for display
-      - 'ss_string': matching SS characters (H/E/C) for colour coding
+    Returns a dict keyed by chain ID containing:
+      residues, sequence_string (one-letter codes), ss_string (H/E/C per residue)
     """
     ppb = PPBuilder()
     sequences: dict[str, dict] = {}
@@ -293,11 +230,21 @@ def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str
                     seq_num = residue.get_id()[1]
                     one_letter = AA_THREE_TO_ONE.get(res_name, "X")
                     ss = ss_map.get((chain.id, seq_num), "C")
+
+                    # Cα B-factor gives one value per residue. AlphaFold stores pLDDT
+                    # here; experimental structures store crystallographic B-factor.
+                    try:
+                        bfactor = round(residue["CA"].get_bfactor(), 1)
+                    except KeyError:
+                        atoms_list = list(residue.get_atoms())
+                        bfactor = round(atoms_list[0].get_bfactor(), 1) if atoms_list else None
+
                     residues.append({
                         "one_letter": one_letter,
                         "three_letter": res_name,
                         "seq_num": seq_num,
                         "ss": ss,
+                        "bfactor": bfactor,
                     })
 
             if residues:
@@ -309,6 +256,37 @@ def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str
         break  # first model only
 
     return sequences
+
+
+def _extract_ligands(structure: Structure) -> dict:
+    """
+    Identify non-water heteroatom ligands (small molecules, cofactors, ions).
+
+    Returns count (total instances) and unique_names (deduplicated list, max 12).
+    Water molecules (HOH/DOD/WAT) are excluded.
+    """
+    _WATER_NAMES: frozenset = frozenset({"HOH", "DOD", "WAT", "H2O", "OH2"})
+    seen: list[str] = []
+    seen_names: list[str] = []
+
+    for model in structure:
+        for chain in model:
+            for residue in chain:
+                hetfield = residue.id[0]
+                if hetfield in (" ", "W"):
+                    continue
+                res_name = residue.get_resname().strip()
+                if res_name in _WATER_NAMES:
+                    continue
+                seen.append(res_name)
+                if res_name not in seen_names:
+                    seen_names.append(res_name)
+        break  # first model only
+
+    return {
+        "count": len(seen),
+        "unique_names": seen_names[:12],  # cap display at 12 names
+    }
 
 
 def _calculate_ss_breakdown(
@@ -339,7 +317,11 @@ def _calculate_ss_breakdown(
         break
 
     if total == 0:
-        return {"helix": 0.0, "sheet": 0.0, "loop": 0.0, "total_residues": 0}
+        return {
+            "helix": 0.0, "sheet": 0.0, "loop": 0.0,
+            "total_residues": 0,
+            "helix_count": 0, "sheet_count": 0, "loop_count": 0,
+        }
 
     loop_count = total - helix_count - sheet_count
     return {
@@ -347,4 +329,7 @@ def _calculate_ss_breakdown(
         "sheet": round(sheet_count / total * 100, 1),
         "loop": round(loop_count / total * 100, 1),
         "total_residues": total,
+        "helix_count": helix_count,
+        "sheet_count": sheet_count,
+        "loop_count": loop_count,
     }

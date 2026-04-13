@@ -1101,6 +1101,632 @@ body {
   font-size: 0.82rem;
 }
 
+/* ---------- Representation tooltip description ---------- */
+/* A plain-English line below the representation select explaining what
+   each view reveals. Implements the multiple-representations principle
+   from Kozlíková et al. (2015) by giving educational context for each choice. */
+.repr-tip {
+  font-size: 0.72rem;
+  color: #64748b;
+  line-height: 1.45;
+  margin-top: 0.35rem;
+  min-height: 2.4em; /* keep layout stable when text changes */
+}
+
+/* ---------- SS count label ---------- */
+/* Small residue count shown alongside percentage in the SS breakdown.
+   Lets users cross-check against RCSB's own annotations. */
+.ss-count {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: #475569;
+  margin-left: 0.35rem;
+}
+
+/* ---------- Residue info panel ---------- */
+.residue-info-panel {
+  background: rgba(34, 211, 238, 0.05);
+  border: 1px solid rgba(34, 211, 238, 0.2);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.ri-plddt-note {
+  font-size: 0.68rem;
+  color: #475569;
+  margin-top: 0.4rem;
+  line-height: 1.4;
+}
+
+/* ---------- Data verified indicator ---------- */
+.data-verified {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.data-verified--ok {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+
+.data-verified--warn {
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  color: #fbbf24;
+}
+
+/* ---------- Search history ---------- */
+.search-history {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.history-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #475569;
+  flex-shrink: 0;
+}
+
+.history-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.history-chip {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 4px;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  max-width: 90px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-chip:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* ---------- Chain toggle row with Isolate button ---------- */
+.chain-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-bottom: 0.3rem;
+}
+
+.btn--isolate {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.5rem;
+  background: transparent;
+  border: 1px solid #1e2d4a;
+  border-radius: 4px;
+  color: #64748b;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.btn--isolate:hover {
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+.btn--sm {
+  font-size: 0.68rem;
+  padding: 0.25rem 0.6rem;
+}
+
+/* ---------- Comparison mode ---------- */
+/* I use a flex row rather than CSS grid so both NGL canvases resize naturally
+   when the panel width changes (e.g. window resize). The NGL stage will call
+   handleResize via JS when the comparison mode state changes. */
+.viewport-row {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+  position: relative;
+}
+
+/* In normal mode the primary viewer fills the row */
+.viewport-row .ngl-viewport {
+  flex: 1;
+}
+
+/* In comparison mode both viewers share the row equally */
+.viewport-row.comparison-active .ngl-viewport {
+  flex: 1;
+}
+
+.viewport-row.comparison-active .ngl-viewport + .ngl-viewport {
+  border-left: 1px solid #1e2d4a;
+}
+
+.ngl-viewport--compare {
+  position: relative;
+}
+
+.compare-controls {
+  margin-top: 0;
+}
+
+.compare-label-b {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 0.4rem;
+  padding: 0.3rem;
+  background: rgba(30, 45, 74, 0.4);
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------- Onboarding tour overlay ---------- */
+.tour-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tour-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7, 11, 20, 0.82);
+  backdrop-filter: blur(3px);
+}
+
+.tour-card {
+  position: relative;
+  z-index: 201;
+  background: #0d1525;
+  border: 1px solid #22d3ee;
+  border-radius: 14px;
+  padding: 1.75rem;
+  max-width: 420px;
+  width: calc(100vw - 2rem);
+  box-shadow: 0 0 60px rgba(34, 211, 238, 0.15), 0 20px 60px rgba(0,0,0,0.6);
+  animation: tour-in 0.3s ease;
+}
+
+@keyframes tour-in {
+  from { opacity: 0; transform: scale(0.95) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)   translateY(0); }
+}
+
+.tour-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.tour-pill {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: #22d3ee;
+  background: rgba(34, 211, 238, 0.1);
+  border: 1px solid rgba(34, 211, 238, 0.25);
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.tour-skip {
+  font-size: 0.72rem;
+  color: #475569;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+}
+.tour-skip:hover { color: #94a3b8; }
+
+.tour-icon {
+  font-size: 2.5rem;
+  text-align: center;
+  margin-bottom: 0.75rem;
+}
+
+.tour-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #f1f5f9;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.tour-body {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.6;
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.tour-dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.tour-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #1e2d4a;
+  border: 1px solid #2d4266;
+  transition: background 0.2s;
+}
+
+.tour-dot--active {
+  background: #22d3ee;
+  border-color: #22d3ee;
+}
+
+.tour-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+/* ---------- Help ? buttons ---------- */
+.section-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.help-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.35);
+  color: #60a5fa;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.help-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.help-btn--sm {
+  width: 13px;
+  height: 13px;
+  font-size: 0.55rem;
+}
+
+/* ---------- Shared help popover ---------- */
+.help-popover {
+  position: fixed;
+  z-index: 150;
+  background: #0d1525;
+  border: 1px solid #3b82f6;
+  border-radius: 8px;
+  padding: 0.75rem 2.25rem 0.75rem 0.85rem;
+  max-width: 270px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: popover-in 0.15s ease;
+}
+
+@keyframes popover-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.help-popover-text {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.help-popover-close {
+  position: absolute;
+  top: 5px;
+  right: 7px;
+  background: none;
+  border: none;
+  color: #475569;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+  padding: 2px;
+}
+.help-popover-close:hover { color: #94a3b8; }
+
+/* ---------- Input pulse (call-to-action on first load) ---------- */
+@keyframes input-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+  50%       { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
+}
+
+.input--pulse {
+  animation: input-pulse 2s ease-in-out infinite;
+}
+
+/* ---------- Metadata placeholder hints ---------- */
+.meta-placeholder-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #334155;
+  margin-bottom: 0.9rem;
+}
+
+.meta-placeholder-hints {
+  list-style: none;
+  text-align: left;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.meta-placeholder-hints li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.78rem;
+  color: #334155;
+  line-height: 1.45;
+}
+
+.hint-icon {
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ---------- Header action buttons (Clear + Tour) ---------- */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn--header-ghost {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.6rem;
+  background: transparent;
+  border: 1px solid #1e2d4a;
+  border-radius: 5px;
+  color: #475569;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.btn--header-ghost:hover {
+  border-color: #22d3ee;
+  color: #22d3ee;
+}
+
+/* ---------- Search result title ---------- */
+.search-result-title {
+  display: block;
+  font-size: 0.68rem;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 1px;
+}
+
+/* ---------- Comparison pane loading indicator ---------- */
+.compare-loading {
+  position: absolute;
+  top: 50%;
+  right: 25%;
+  transform: translate(50%, -50%);
+  background: rgba(13, 21, 37, 0.9);
+  border: 1px solid #22d3ee;
+  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+  color: #22d3ee;
+  z-index: 20;
+  pointer-events: none;
+}
+
+.compare-loading-text {
+  font-family: 'DM Mono', monospace;
+}
+
+/* ---------- Typeahead search ---------- */
+.typeahead-wrapper {
+  position: relative;
+}
+
+.typeahead-list {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: #0d1525;
+  border: 1px solid #22d3ee;
+  border-radius: 7px;
+  list-style: none;
+  max-height: 260px;
+  overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  animation: popover-in 0.12s ease;
+}
+
+.typeahead-item {
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  border-bottom: 1px solid #1e2d4a;
+  outline: none;
+  transition: background 0.1s;
+}
+
+.typeahead-item:last-child { border-bottom: none; }
+
+.typeahead-item:hover,
+.typeahead-item:focus {
+  background: rgba(34, 211, 238, 0.08);
+}
+
+.typeahead-id {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  color: #22d3ee;
+}
+
+.typeahead-title {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.typeahead-empty {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.75rem;
+  color: #475569;
+  font-style: italic;
+}
+
+/* ---------- Advanced load (details/summary) ---------- */
+.advanced-load {
+  margin-top: 0.5rem;
+}
+
+.advanced-load-summary {
+  font-size: 0.72rem;
+  color: #475569;
+  cursor: pointer;
+  user-select: none;
+  padding: 0.25rem 0;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.advanced-load-summary:hover { color: #94a3b8; }
+
+.advanced-load-summary::before {
+  content: '▸';
+  font-size: 0.6rem;
+  transition: transform 0.15s;
+}
+
+details[open] .advanced-load-summary::before {
+  transform: rotate(90deg);
+}
+
+/* ---------- Distance measurement steps ---------- */
+.measure-steps {
+  list-style: none;
+  margin-bottom: 0.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.measure-step {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: #334155;
+  transition: color 0.2s;
+}
+
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 0.65rem;
+  font-weight: 700;
+  background: #1e2d4a;
+  color: #475569;
+  flex-shrink: 0;
+  transition: background 0.2s, color 0.2s;
+}
+
+.measure-step--active {
+  color: #e2e8f0;
+}
+
+.measure-step--active .step-num {
+  background: #22d3ee;
+  color: #070b14;
+}
+
+.measure-step--done {
+  color: #475569;
+}
+
+.measure-step--done .step-num {
+  background: #166534;
+  color: #4ade80;
+}
+
+/* ---------- Viewport measure-mode ring ---------- */
+@keyframes measure-ring-pulse {
+  0%, 100% { box-shadow: inset 0 0 0 2px rgba(34, 211, 238, 0.5); }
+  50%       { box-shadow: inset 0 0 0 3px rgba(34, 211, 238, 0.9); }
+}
+
+.measure-ring {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  border-radius: inherit;
+  animation: measure-ring-pulse 1.2s ease-in-out infinite;
+}
+
 /* ---------- Utility: hidden ---------- */
 [hidden] { display: none !important; }
 

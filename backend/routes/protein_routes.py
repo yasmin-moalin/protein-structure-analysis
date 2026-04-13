@@ -1,22 +1,11 @@
 from __future__ import annotations
 
 """
-protein_routes.py — HTTP interface only
+protein_routes.py: HTTP interface only
 
-This module knows about Flask, HTTP status codes, and JSON formatting.
-It contains no business logic — that lives in the service layer. If I
-ever swap Flask for FastAPI or another framework, I only rewrite this file.
-
-Validation here is limited to format checks (correct length, valid characters)
-rather than semantic checks (does this PDB ID exist?). Semantic validation
-happens implicitly when the fetcher returns a 404, which I map to a clear
-user-facing message. I don't want to do an extra network call just to validate
-an ID that the fetch step will validate for free.
-
-I implement CORS manually via the after_request hook in app.py rather than
-using flask-cors. The manual approach means I understand exactly which headers
-are being set and why — something I'd struggle to explain in a viva if I had
-just dropped a @cross_origin decorator on everything without understanding it.
+Flask, status codes, JSON formatting, nothing else. Business logic stays in
+the service layer. I validate ID format here but leave semantic checks (does
+this entry exist?) to the fetcher, which would make the same network call anyway.
 """
 
 import re
@@ -37,14 +26,11 @@ logger = logging.getLogger(__name__)
 
 protein_bp = Blueprint("protein", __name__, url_prefix="/api")
 
-# PDB ID format: exactly 4 characters, first must be a digit, rest alphanumeric.
-# This reflects the actual RCSB naming convention — PDB IDs always start with
-# a digit followed by three uppercase alphanumeric characters.
+# PDB IDs are exactly 4 characters: a digit followed by three alphanumerics.
 _PDB_PATTERN = re.compile(r"^[0-9][A-Z0-9]{3}$")
 
-# UniProt accession format — covers both the legacy 6-character format (e.g.
-# P68871) and the newer 10-character format (e.g. A0A000AB12).
-# Pattern derived from UniProt's own documentation.
+# UniProt accession format covers both legacy 6-char (e.g. P68871) and
+# the newer 10-char format (e.g. A0A000AB12), per UniProt documentation.
 _UNIPROT_PATTERN = re.compile(
     r"^[OPQ][0-9][A-Z0-9]{3}[0-9]([A-Z][A-Z0-9]{2}[0-9])?$"
     r"|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$"
@@ -92,15 +78,7 @@ def _ok(data: dict) -> Response:
 
 @protein_bp.route("/protein/<pdb_id>", methods=["GET"])
 def get_protein(pdb_id: str) -> Response:
-    """
-    Return metadata and structural analysis for a PDB entry.
-
-    This is the main endpoint the frontend calls when the user loads a
-    structure. It returns all the metadata and analysis data — everything
-    except the raw PDB file. The file itself is served from /structure
-    because it can be tens of megabytes for cryo-EM structures and I
-    don't want to embed it in a JSON response.
-    """
+    """Return metadata and structural analysis for a PDB entry."""
     err = _validate_pdb_id(pdb_id)
     if err:
         return _error(err, 400)
@@ -120,14 +98,7 @@ def get_protein(pdb_id: str) -> Response:
 
 @protein_bp.route("/protein/<pdb_id>/structure", methods=["GET"])
 def get_protein_structure(pdb_id: str) -> Response:
-    """
-    Serve the raw PDB file as plain text for NGL Viewer to load.
-
-    I serve it as text/plain with an explicit content-type so NGL's blob
-    loading interprets it correctly. Routing through the backend (rather than
-    having the frontend hit RCSB directly) means the in-memory cache is shared
-    between the metadata call and the structure call for the same protein.
-    """
+    """Serve the raw PDB file as plain text for NGL Viewer to load."""
     err = _validate_pdb_id(pdb_id)
     if err:
         return _error(err, 400)
@@ -148,14 +119,7 @@ def get_protein_structure(pdb_id: str) -> Response:
 
 @protein_bp.route("/alphafold/<uniprot_id>", methods=["GET"])
 def get_alphafold(uniprot_id: str) -> Response:
-    """
-    Return metadata and structural info for an AlphaFold predicted structure.
-
-    The response always includes the 'disclaimer' field, which the frontend
-    must display prominently. Scientific integrity requires that users never
-    mistake a computational prediction for an experimentally determined
-    structure — the distinction matters for how the data can be used and cited.
-    """
+    """Return metadata and structural info for an AlphaFold predicted structure."""
     err = _validate_uniprot_id(uniprot_id)
     if err:
         return _error(err, 400)
@@ -196,14 +160,7 @@ def get_alphafold_structure(uniprot_id: str) -> Response:
 
 @protein_bp.route("/search", methods=["GET"])
 def search() -> Response:
-    """
-    Search RCSB PDB by free text.
-
-    I use GET rather than POST because search is a read-only, idempotent
-    operation and the query parameters belong in the URL — that's correct
-    HTTP semantics. POST would be appropriate if the query were sensitive
-    data or too long for a URL, neither of which applies here.
-    """
+    """Search RCSB PDB by free text. GET because it's a read-only, idempotent operation."""
     query = request.args.get("q", "").strip()
 
     if not query:
