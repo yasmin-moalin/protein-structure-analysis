@@ -1,7 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-test_parser.py — unit tests for structure_parser.py
+test_parser.py - unit tests for structure_parser.py
 
 I test the parser in isolation by passing in hand-crafted PDB strings
 rather than loading real files from disk. This means tests run offline
@@ -105,7 +105,7 @@ class TestAtomParsing:
     """I test ATOM record extraction first because everything else depends on it."""
 
     def test_atom_count_is_correct(self):
-        # The minimal PDB has 12 ATOM lines — parser must count all of them.
+        # The minimal PDB has 12 ATOM lines - parser must count all of them.
         result = parse_pdb_text(MINIMAL_PDB)
         assert result["atom_count"] == 12
 
@@ -165,7 +165,7 @@ class TestSecondaryStructureParsing:
         assert ss_map[("A", 2)] == "H"
 
     def test_unassigned_residues_are_coil_in_sequence(self):
-        # MINIMAL_PDB has helix covering all 3 residues — none should be coil
+        # MINIMAL_PDB has helix covering all 3 residues - none should be coil
         result = parse_pdb_text(MINIMAL_PDB)
         ss_string = result["sequence"]["A"]["ss_string"]
         assert ss_string == "HHH"
@@ -193,7 +193,7 @@ class TestSecondaryStructureParsing:
 class TestSSBreakdown:
     """
     I test the breakdown function with known values so I can cross-check the
-    output against RCSB's own entry pages — this is the data accuracy
+    output against RCSB's own entry pages - this is the data accuracy
     verification my supervisor specifically requested.
     """
 

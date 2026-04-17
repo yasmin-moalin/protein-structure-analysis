@@ -1,11 +1,11 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-test_service.py — unit tests for protein_service.py
+test_service.py - unit tests for protein_service.py
 
 I test the service layer with all network calls mocked out so tests run
-offline and deterministically. The service layer's job is orchestration —
-combining fetcher output with parser output — so I verify that the merging
+offline and deterministically. The service layer's job is orchestration -
+combining fetcher output with parser output - so I verify that the merging
 logic is correct, fallbacks work when REST metadata fails, and the AlphaFold
 disclaimer is always present on predicted structures.
 
@@ -103,7 +103,7 @@ class TestGetAlphaFoldInfo:
     def test_returns_disclaimer(self, mock_struct):
         from services.protein_service import get_alphafold_info
         result = get_alphafold_info("P68871")
-        # The disclaimer is mandatory — scientific integrity requires that
+        # The disclaimer is mandatory - scientific integrity requires that
         # predicted structures are always clearly labelled.
         assert "disclaimer" in result
         assert len(result["disclaimer"]) > 50  # non-trivial disclaimer text

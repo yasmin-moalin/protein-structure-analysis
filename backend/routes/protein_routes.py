@@ -1,11 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-protein_routes.py: HTTP interface only
-
-Flask, status codes, JSON formatting, nothing else. Business logic stays in
-the service layer. I validate ID format here but leave semantic checks (does
-this entry exist?) to the fetcher, which would make the same network call anyway.
+protein_routes.py: HTTP only - validation, status codes, and JSON formatting. All business logic lives in the service layer.
 """
 
 import re
@@ -55,8 +51,7 @@ def _validate_uniprot_id(uniprot_id: str) -> Optional[str]:
     if not uniprot_id or not uniprot_id.strip():
         return "UniProt accession is required."
     cleaned = uniprot_id.upper().strip()
-    # A relaxed length check covers accessions the regex might miss while
-    # still catching obvious garbage input. UniProt accessions are 6 or 10 chars.
+    # A length check catches obvious bad input since UniProt accessions are always 6 or 10 characters.
     if len(cleaned) not in (6, 10) or not cleaned[0].isalpha():
         return (
             f"'{uniprot_id}' does not look like a valid UniProt accession. "

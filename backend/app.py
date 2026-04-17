@@ -1,11 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-app.py: Flask application entry point
-
-I use a create_app() factory so the app can be tested without starting the
-server. CORS is handled manually via after_request so I know exactly which
-headers are being set. Runs on port 5000.
+app.py: Flask entry point - sets up CORS, serves the frontend, and registers all API routes.
 """
 
 import logging
@@ -16,15 +12,10 @@ from flask import Flask, request, jsonify, send_from_directory
 
 from routes.protein_routes import protein_bp
 
-# The frontend files live one directory up from the backend, so I compute
-# the absolute path here rather than using a relative path — relative paths
-# are resolved from the working directory, which breaks if someone runs
-# app.py from a different directory than backend/.
+# I use the absolute path so the server finds the frontend regardless of which directory you run it from.
 FRONTEND_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
 
-# I configure structured logging at the app level so the format is consistent
-# across all modules. Each logger in fetcher.py, service.py etc. inherits
-# this configuration automatically via Python's logger hierarchy.
+# Logging is configured here once so every module in the app uses the same format automatically.
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -36,13 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 def create_app() -> Flask:
-    """
-    Create and configure the Flask application.
-
-    Keeping this as a factory function (rather than module-level setup)
-    means tests and the __main__ block both use the same code path, which
-    prevents the 'works in dev, fails in test' class of bugs.
-    """
+    """Create and configure the Flask app - I use a factory so tests and the server both go through the same setup."""
     app = Flask(__name__)
     app.register_blueprint(protein_bp)
 

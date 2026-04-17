@@ -1,14 +1,14 @@
-# ProteinVis
+﻿# ProteinVis
 
 **Interactive 3D Protein Structure Visualisation**
-COMP1682 Final Year Project — University of Greenwich
+COMP1682 Final Year Project - University of Greenwich
 
 ---
 
 ## What is this?
 
 ProteinVis is a browser-based tool for visualising and exploring protein structures
-in 3D — without installing any desktop software. It fetches structure data from two
+in 3D - without installing any desktop software. It fetches structure data from two
 public databases (RCSB PDB and AlphaFold EBI), renders them using WebGL via the NGL
 Viewer library, and provides interactive controls for representation, colour scheme,
 chain visibility, sequence browsing, and distance measurement.
@@ -46,7 +46,7 @@ protein_visualisation_prototype/
 │   ├── app.py                      Flask entry point, manual CORS, static serving
 │   ├── requirements.txt
 │   ├── routes/
-│   │   └── protein_routes.py       HTTP interface only — validation, JSON formatting
+│   │   └── protein_routes.py       HTTP interface only - validation, JSON formatting
 │   ├── services/
 │   │   └── protein_service.py      Business logic, orchestration, no Flask
 │   ├── parsers/
@@ -68,7 +68,7 @@ protein_visualisation_prototype/
 **Four-layer backend:** Each layer has exactly one responsibility. `routes/` knows about
 HTTP. `services/` knows about business logic. `parsers/` knows about PDB format.
 `utils/` knows about network I/O. No layer reaches into another's domain. This
-separation means each component can be tested in isolation and swapped independently —
+separation means each component can be tested in isolation and swapped independently -
 if RCSB changed their API, only `pdb_fetcher.py` would need updating.
 
 **Three-object frontend:** `ProteinAPI`, `ViewerManager`, and `UIController` match the
@@ -80,7 +80,7 @@ same separation-of-concerns principle. `UIController` never calls NGL directly;
 so the headers being set are visible and explainable, not hidden behind a decorator.
 
 **In-memory cache with 1-hour TTL:** Chosen over Redis or a file cache because this
-is a local prototype — the overhead of an external cache service isn't justified.
+is a local prototype - the overhead of an external cache service isn't justified.
 The TTL of one hour covers any realistic user session without risk of stale data
 (PDB entries are updated weekly at most).
 
@@ -197,7 +197,7 @@ and UniProt accessions. No user accounts, no logging of queries beyond the local
 Flask process, no cookies.
 
 **Open data.** All structure data is publicly available under open licences. The
-application does not redistribute data — it fetches it on demand and holds it in
+application does not redistribute data - it fetches it on demand and holds it in
 a short-lived local cache.
 
 **Responsible API use.** A descriptive `User-Agent` header is sent with all requests

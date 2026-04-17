@@ -1,7 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-test_routes.py — unit tests for protein_routes.py (Flask layer)
+test_routes.py - unit tests for protein_routes.py (Flask layer)
 
 I test the routes layer using Flask's test client, which sends real HTTP
 requests to the app without needing a running server. Every test mocks the
@@ -63,14 +63,14 @@ class TestGetProteinEndpoint:
         assert body["status"] == 200
 
     def test_invalid_pdb_format_returns_400(self, client):
-        # 'ABC' is only 3 characters — route must reject it
+        # 'ABC' is only 3 characters - route must reject it
         response = client.get("/api/protein/ABC")
         assert response.status_code == 400
         body = json.loads(response.data)
         assert "error" in body
 
     def test_pdb_not_starting_with_digit_returns_400(self, client):
-        # PDB IDs must start with a digit — 'ABCD' should fail format check
+        # PDB IDs must start with a digit - 'ABCD' should fail format check
         response = client.get("/api/protein/ABCD")
         assert response.status_code == 400
 

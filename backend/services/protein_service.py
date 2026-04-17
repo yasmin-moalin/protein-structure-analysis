@@ -1,11 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-protein_service.py: business logic and orchestration
-
-Sits between the routes and the fetcher/parser. No Flask here, just
-plain Python values in and structured dicts out. I combine RCSB REST metadata
-with parsed PDB data so the frontend gets everything in one response.
+protein_service.py: all business logic lives here, between the HTTP routes and the data fetchers. No Flask, just plain Python.
 """
 
 import logging
@@ -34,13 +30,7 @@ ALPHAFOLD_DISCLAIMER = (
 
 
 def get_protein_info(pdb_id: str) -> dict:
-    """
-    Return combined structural and metadata info for a PDB entry.
-
-    I merge RCSB REST metadata (clean JSON fields for title/method) with
-    the parsed PDB file so the frontend gets everything in one request.
-    If the REST call fails I fall back to PDB header fields.
-    """
+    """Merge RCSB REST metadata with parsed PDB data into one dict - falls back to PDB header fields if the REST call fails."""
     pdb_id = pdb_id.upper().strip()
     logger.info("Building protein info package for: %s", pdb_id)
 
@@ -73,13 +63,7 @@ def get_protein_structure_text(pdb_id: str) -> str:
 
 
 def get_alphafold_info(uniprot_id: str) -> dict:
-    """
-    Return structural info for an AlphaFold predicted structure.
-
-    AlphaFold files lack experimental metadata (resolution, method, authors)
-    so I fill those from known constants and the EBI annotation API. The
-    disclaimer field must be displayed prominently by the frontend.
-    """
+    """Build the metadata dict for an AlphaFold prediction, filling in organism and gene from the EBI API since the PDB header doesn't include them."""
     uniprot_id = uniprot_id.upper().strip()
     logger.info("Building AlphaFold info package for UniProt: %s", uniprot_id)
 
@@ -89,8 +73,7 @@ def get_alphafold_info(uniprot_id: str) -> dict:
     # EBI API gives richer metadata than the PDB header: organism, gene, description.
     af_meta = fetch_alphafold_metadata(uniprot_id)
 
-    # Mean pLDDT is a derived stat (average of per-residue B-factors), so it
-    # belongs here in the service layer rather than in the parser.
+    # Mean pLDDT is calculated here because it's derived across all chains - not something the parser should do.
     mean_plddt = _calculate_mean_plddt(parsed.get("sequence", {}))
 
     return {
@@ -133,12 +116,7 @@ def get_alphafold_structure_text(uniprot_id: str) -> str:
 
 
 def search_proteins(query: str) -> list[dict]:
-    """
-    Search RCSB PDB by free text and return a simplified result list.
-
-    I return only pdb_id, score, and title. The user picks one from the
-    sidebar, then get_protein_info() fetches the full detail on demand.
-    """
+    """Search RCSB and return just pdb_id, score, and title - full details are fetched on demand when the user picks a result."""
     query = query.strip()
     if len(query) < 2:
         raise ValueError("Search query must be at least 2 characters.")
@@ -148,7 +126,7 @@ def search_proteins(query: str) -> list[dict]:
 
     return [
         {
-            "pdb_id": result["identifier"],
+            "pdb_id": result["pdb_id"],
             "score": round(result.get("score", 0), 3),
             "title": result.get("title") or "",
         }
@@ -157,14 +135,7 @@ def search_proteins(query: str) -> list[dict]:
 
 
 def _fetch_rest_metadata_safe(pdb_id: str) -> dict:
-    """
-    Attempt to fetch REST metadata, returning an empty dict on failure.
-
-    I wrap the REST call in a broad except because it's supplementary —
-    the parsed PDB file contains enough information to render the structure
-    even if this call fails. A transient API hiccup shouldn't break the
-    whole structure load.
-    """
+    """Fetch REST metadata safely, returning an empty dict on failure - a network hiccup here shouldn't prevent the structure from loading."""
     try:
         raw = fetch_pdb_metadata(pdb_id)
         return _extract_rest_fields(raw)
@@ -174,12 +145,7 @@ def _fetch_rest_metadata_safe(pdb_id: str) -> dict:
 
 
 def _calculate_mean_plddt(sequence: dict) -> Optional[float]:
-    """
-    Calculate mean pLDDT across all chains.
-
-    AlphaFold encodes per-residue confidence in the B-factor column.
-    Returns None if no B-factor data is present.
-    """
+    """Average the per-residue pLDDT scores (stored in the B-factor column by AlphaFold) across all chains."""
     scores = [
         r["bfactor"]
         for chain_data in sequence.values()
@@ -209,9 +175,7 @@ def _extract_rest_fields(raw: dict) -> dict:
     if isinstance(exptl, list) and exptl:
         result["method"] = exptl[0].get("method")
 
-    # Organism: RCSB puts this in entity-level data, not entry-level.
-    # The entry endpoint doesn't include it directly, so we fall back to
-    # the PDB parser's SOURCE record extraction for organism.
+    # Organism isn't available at the entry level from RCSB REST, so I fall back to the PDB parser's SOURCE records.
     result["organism"] = None
 
     return result

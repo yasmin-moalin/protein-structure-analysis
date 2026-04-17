@@ -1,18 +1,18 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-test_fetcher.py — unit tests for pdb_fetcher.py
+test_fetcher.py - unit tests for pdb_fetcher.py
 
 I test the fetcher in isolation using unittest.mock so no real HTTP calls
 are made. The tests verify:
   1. Successful responses are returned and cached
-  2. 404 HTTP errors raise ValueError (not found — user-visible message)
+  2. 404 HTTP errors raise ValueError (not found - user-visible message)
   3. Other HTTP errors raise RuntimeError (server error)
   4. Network timeouts raise RuntimeError
   5. The cache returns stale data after TTL expiry (simulated with time mock)
   6. The RCSB search API payload is well-formed
 
-I do NOT test that RCSB actually returns haemoglobin when you search for it —
+I do NOT test that RCSB actually returns haemoglobin when you search for it -
 that's an integration concern, not a unit concern.
 """
 

@@ -1,11 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-structure_parser.py: PDB file parsing, no network calls
-
-I combine Biopython's PDBParser for structural data (atoms, chains, residues)
-with manual line parsing for header records like HELIX, SHEET, SOURCE, and
-EXPDTA that Biopython doesn't expose cleanly.
+structure_parser.py: parses raw PDB text into structured data. I use Biopython for atoms and chains, and manual line parsing for HELIX/SHEET/SOURCE records that Biopython doesn't expose.
 """
 
 import io
@@ -17,10 +13,7 @@ from Bio.PDB.Structure import Structure
 
 logger = logging.getLogger(__name__)
 
-# Standard 3-letter to 1-letter amino acid codes. I define this here
-# rather than importing from Biopython's seq module because I only need
-# it for sequence display. Keeping the dependency surface small makes
-# the code easier to explain and test.
+# Standard 3-to-1 amino acid code map. I define it here rather than importing from Biopython to keep the dependency small.
 AA_THREE_TO_ONE: dict[str, str] = {
     "ALA": "A", "ARG": "R", "ASN": "N", "ASP": "D", "CYS": "C",
     "GLN": "Q", "GLU": "E", "GLY": "G", "HIS": "H", "ILE": "I",
@@ -32,11 +25,7 @@ AA_THREE_TO_ONE: dict[str, str] = {
 
 
 def parse_pdb_text(pdb_text: str) -> dict:
-    """
-    Parse a complete PDB file string and return all extracted data.
-
-    Returns one dict so the service layer has a single thing to deal with.
-    """
+    """Parse a PDB file string and return all extracted data in a single dict for the service layer."""
     structure = _load_biopython_structure(pdb_text)
     ss_residues = _parse_helix_sheet_records(pdb_text)
     sequences = _build_sequences(structure, ss_residues)
@@ -57,12 +46,7 @@ def parse_pdb_text(pdb_text: str) -> dict:
 
 
 def _load_biopython_structure(pdb_text: str) -> Structure:
-    """
-    Parse the PDB text into a Biopython Structure object.
-
-    QUIET=True suppresses warnings because real PDB files are noisy (missing atoms,
-    non-standard residues) and those warnings don't affect my output.
-    """
+    """Parse the PDB text into a Biopython Structure object - I use QUIET=True because real PDB files produce a lot of harmless warnings."""
     parser = PDBParser(QUIET=True)
     return parser.get_structure("protein", io.StringIO(pdb_text))
 
@@ -84,12 +68,7 @@ def _get_chain_ids(structure: Structure) -> list[str]:
 
 
 def _get_chain_details(structure: Structure) -> list[dict]:
-    """
-    Build per-chain summary: chain ID, standard residue count, atom count.
-
-    I filter to hetfield == ' ' to exclude water and ligands so the residue
-    count means amino acids only.
-    """
+    """Build a per-chain summary of residue and atom counts, excluding water and ligands so the count reflects amino acids only."""
     details = []
     for model in structure:
         for chain in model:
@@ -118,13 +97,7 @@ def _extract_resolution(pdb_text: str) -> Optional[float]:
 
 
 def _extract_organism(pdb_text: str) -> Optional[str]:
-    """
-    Extract the scientific organism name from SOURCE records.
-
-    SOURCE spans multiple lines so I concatenate them, then pull the
-    ORGANISM_SCIENTIFIC field (scientific name is always present; common
-    name isn't).
-    """
+    """Extract the scientific name from SOURCE records by joining the multi-line field and pulling out ORGANISM_SCIENTIFIC."""
     source_parts = []
     for line in pdb_text.splitlines():
         if line.startswith("SOURCE"):
@@ -174,14 +147,7 @@ def _extract_method(pdb_text: str) -> Optional[str]:
 
 
 def _parse_helix_sheet_records(pdb_text: str) -> dict[tuple, str]:
-    """
-    Parse HELIX and SHEET records into a (chain_id, seq_num) -> 'H'/'E' map.
-
-    I use the PDB header records rather than DSSP because DSSP needs an
-    external binary. The fixed-column positions are:
-      HELIX: chain col 20, start cols 22-25, end cols 34-37
-      SHEET: chain col 22, start cols 23-26, end cols 34-37
-    """
+    """Parse HELIX and SHEET records into a (chain_id, seq_num) → 'H'/'E' map - I read the fixed-column PDB format directly rather than using DSSP which needs an external binary."""
     ss_map: dict[tuple, str] = {}
 
     for line in pdb_text.splitlines():
@@ -209,15 +175,7 @@ def _parse_helix_sheet_records(pdb_text: str) -> dict[tuple, str]:
 
 
 def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str, dict]:
-    """
-    Build per-chain sequence data from ATOM records, annotated with secondary structure.
-
-    I use PPBuilder rather than SEQRES so only structurally resolved residues
-    are included, matching what's visible in the 3D view.
-
-    Returns a dict keyed by chain ID containing:
-      residues, sequence_string (one-letter codes), ss_string (H/E/C per residue)
-    """
+    """Build per-chain sequence data from ATOM records, annotated with secondary structure. I use PPBuilder (not SEQRES) so the sequence matches only what's visible in the 3D view."""
     ppb = PPBuilder()
     sequences: dict[str, dict] = {}
 
@@ -231,8 +189,7 @@ def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str
                     one_letter = AA_THREE_TO_ONE.get(res_name, "X")
                     ss = ss_map.get((chain.id, seq_num), "C")
 
-                    # Cα B-factor gives one value per residue. AlphaFold stores pLDDT
-                    # here; experimental structures store crystallographic B-factor.
+                    # I read the Cα B-factor per residue - AlphaFold stores pLDDT here, experimental structures store crystallographic B-factor.
                     try:
                         bfactor = round(residue["CA"].get_bfactor(), 1)
                     except KeyError:
@@ -259,12 +216,7 @@ def _build_sequences(structure: Structure, ss_map: dict[tuple, str]) -> dict[str
 
 
 def _extract_ligands(structure: Structure) -> dict:
-    """
-    Identify non-water heteroatom ligands (small molecules, cofactors, ions).
-
-    Returns count (total instances) and unique_names (deduplicated list, max 12).
-    Water molecules (HOH/DOD/WAT) are excluded.
-    """
+    """Identify non-water ligands (cofactors, ions, small molecules) and return the total count and up to 12 unique names."""
     _WATER_NAMES: frozenset = frozenset({"HOH", "DOD", "WAT", "H2O", "OH2"})
     seen: list[str] = []
     seen_names: list[str] = []
@@ -292,13 +244,7 @@ def _extract_ligands(structure: Structure) -> dict:
 def _calculate_ss_breakdown(
     structure: Structure, ss_map: dict[tuple, str]
 ) -> dict:
-    """
-    Calculate percentage breakdown of residues in helix, sheet, and loop.
-
-    I count standard amino acid residues only (hetfield == ' ') and
-    cross-reference with the HELIX/SHEET map to assign each residue.
-    Anything not explicitly assigned to helix or sheet is considered loop/coil.
-    """
+    """Calculate the helix/sheet/loop percentage breakdown by cross-referencing each standard residue against the HELIX and SHEET records."""
     total = 0
     helix_count = 0
     sheet_count = 0

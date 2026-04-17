@@ -1,12 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 """
-pdb_fetcher.py: all outbound HTTP calls live here
-
-I put every network call in one place so the rest of the stack never has to
-know about URLs or retry logic. I use requests.Session for connection pooling
-and a 1-hour in-memory cache so the same structure isn't fetched twice per
-session.
+pdb_fetcher.py: every outbound HTTP call goes through here. I use a requests.Session with a 1-hour in-memory cache so the same structure is never fetched twice.
 """
 
 import time
@@ -54,14 +49,7 @@ def _set_cached(key: str, data: object) -> None:
 
 
 def fetch_pdb_structure(pdb_id: str) -> str:
-    """
-    Download the PDB file for a given 4-character identifier from RCSB.
-
-    Returns the raw PDB text. I validate the format here rather than in
-    the service layer because this is the first place a bad ID would cause
-    a problem, no point in deferring that check and waiting for a network
-    roundtrip to discover it.
-    """
+    """Download the PDB file from RCSB and return the raw text, checking the cache first to avoid repeated network calls."""
     pdb_id = pdb_id.upper().strip()
     cache_key = f"pdb_structure_{pdb_id}"
 
@@ -97,15 +85,7 @@ def fetch_pdb_structure(pdb_id: str) -> str:
 
 
 def fetch_pdb_metadata(pdb_id: str) -> dict:
-    """
-    Fetch structured metadata for a PDB entry via the RCSB Data API.
-
-    I use the REST data API rather than parsing the PDB header directly
-    because the REST response is structured JSON, much easier to extract
-    specific fields from than the fixed-column HEADER/TITLE/REMARK records
-    in the PDB format. The parser still reads PDB records for things the
-    REST API doesn't expose cleanly, like per-residue secondary structure.
-    """
+    """Fetch structured metadata from the RCSB Data API - I use this alongside the PDB parser because the REST JSON is cleaner for fields like title and resolution."""
     pdb_id = pdb_id.upper().strip()
     cache_key = f"pdb_metadata_{pdb_id}"
 
@@ -135,12 +115,7 @@ def fetch_pdb_metadata(pdb_id: str) -> dict:
 
 
 def fetch_alphafold_structure(uniprot_id: str) -> str:
-    """
-    Download the AlphaFold predicted structure for a given UniProt accession.
-
-    Downloads from the AlphaFold EBI database using model v4. Structures can
-    be large so I give this a longer timeout than standard PDB fetches.
-    """
+    """Download an AlphaFold structure from EBI using the UniProt accession, with a longer timeout since AlphaFold files can be large."""
     uniprot_id = uniprot_id.upper().strip()
     cache_key = f"alphafold_structure_{uniprot_id}"
 
@@ -148,8 +123,8 @@ def fetch_alphafold_structure(uniprot_id: str) -> str:
     if cached:
         return cached
 
-    url = f"{ALPHAFOLD_FILES_BASE}/AF-{uniprot_id}-F1-model_v4.pdb"
-    logger.info("Fetching AlphaFold structure: %s", url)
+    meta = fetch_alphafold_metadata(uniprot_id)
+    url = meta.get('pdbUrl') or f"{ALPHAFOLD_FILES_BASE}/AF-{uniprot_id}-F1-model_v4.pdb"
 
     try:
         response = _session.get(url, timeout=30)
@@ -177,19 +152,7 @@ def fetch_alphafold_structure(uniprot_id: str) -> str:
 
 
 def fetch_alphafold_metadata(uniprot_id: str) -> dict:
-    """
-    Fetch structured annotation for an AlphaFold entry from the EBI REST API.
-
-    The AlphaFold EBI API (https://alphafold.ebi.ac.uk/api/prediction/{id})
-    returns richer annotation than the PDB file header: organism name, gene
-    symbol, UniProt protein description, and taxon ID. I fetch this alongside
-    the structure file so the metadata panel can display biologically meaningful
-    labels rather than the sparse PDB TITLE record.
-
-    Returns the first prediction entry dict, or an empty dict on failure.
-    Failures are soft; the caller must handle a missing 'gene' or 'organism'
-    gracefully by falling back to PDB-parsed values.
-    """
+    """Fetch organism, gene, and description from the AlphaFold EBI API - the PDB header alone doesn't include these. Returns empty dict on failure so the caller can fall back gracefully."""
     uniprot_id = uniprot_id.upper().strip()
     cache_key = f"alphafold_meta_{uniprot_id}"
 
@@ -204,8 +167,7 @@ def fetch_alphafold_metadata(uniprot_id: str) -> dict:
         response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
-        # API returns a list; each item is one fragment/prediction.
-        # Take the first entry which covers the canonical isoform.
+        # The API returns a list of predictions; I take the first which covers the standard isoform.
         result: dict = data[0] if isinstance(data, list) and data else {}
         _set_cached(cache_key, result)
         return result
@@ -217,12 +179,7 @@ def fetch_alphafold_metadata(uniprot_id: str) -> dict:
 
 
 def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
-    """
-    Run a full-text search against the RCSB PDB v2 Search API.
-
-    Capped at 25 results. I fetch titles for the top 8 in parallel so users
-    can recognise proteins by name rather than just PDB ID.
-    """
+    """Run a full-text search against RCSB, capped at 25 results. I fetch titles for the top 8 in parallel so they show up fast."""
     cache_key = f"search_{query.lower().strip()}_{max_results}"
     cached = _get_cached(cache_key)
     if cached:
@@ -236,10 +193,7 @@ def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
         },
         "return_type": "entry",
         "request_options": {
-            "paginate": {"start": 0, "rows": max_results},
-            "results_content_type": ["experimental"],
-            "sort": [{"sort_by": "score", "direction": "descending"}],
-            "scoring_strategy": "combined"
+            "paginate": {"start": 0, "rows": max_results}
         }
     }
 
@@ -254,7 +208,7 @@ def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
         results = []
         for item in raw_results:
             results.append({
-                "identifier": item.get("identifier"),
+                "pdb_id": item.get("identifier"),
                 "score": item.get("score", 0),
                 "title": None,
             })
@@ -263,7 +217,7 @@ def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
         top8 = results[:8]
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             future_to_result = {
-                pool.submit(fetch_pdb_metadata, r["identifier"]): r
+                pool.submit(fetch_pdb_metadata, r["pdb_id"]): r
                 for r in top8
             }
             for future, r in future_to_result.items():

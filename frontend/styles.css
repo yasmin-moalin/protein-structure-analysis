@@ -1,5 +1,5 @@
-/* ============================================================
-   ProteinVis — styles.css
+﻿/* ============================================================
+   ProteinVis - styles.css
    Dark scientific theme following Meyer & Dykes (2020) principles:
    visual hierarchy through typography, contrast ratios that meet
    WCAG AA for accessibility, and consistent spatial grouping to
@@ -16,9 +16,9 @@
      Heading text:         #f1f5f9
 
    Typography:
-     Syne — display headings (app header, section titles)
-     Inter — all body text and UI labels
-     DM Mono — PDB identifiers, numerical data, code values
+     Syne - display headings (app header, section titles)
+     Inter - all body text and UI labels
+     DM Mono - PDB identifiers, numerical data, code values
    ============================================================ */
 
 /* ---------- Reset & base ---------- */
@@ -43,7 +43,7 @@ body {
   overflow: hidden;
 }
 
-/* Screen-reader only — used for hidden labels that assist AT users */
+/* Screen-reader only - used for hidden labels that assist AT users */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -56,7 +56,7 @@ body {
   border: 0;
 }
 
-/* Mono font utility — PDB IDs, numeric data */
+/* Mono font utility - PDB IDs, numeric data */
 .mono {
   font-family: 'DM Mono', 'Fira Mono', monospace;
   letter-spacing: 0.03em;
@@ -506,7 +506,7 @@ body {
   position: relative;
 }
 
-/* NGL creates a canvas inside this div — make sure the canvas fills it */
+/* NGL creates a canvas inside this div - make sure the canvas fills it */
 .ngl-viewport canvas {
   display: block;
   width: 100% !important;
@@ -533,7 +533,7 @@ body {
    browser. Pre-computing avoids the runtime dependency entirely.
 
    The helix effect comes from combining fixed horizontal positions (the sine
-   wave) with a horizontal swing animation that has a per-dot delay — this
+   wave) with a horizontal swing animation that has a per-dot delay - this
    makes adjacent dots appear to chase each other in opposite phases. */
 .dna-loader {
   height: 80px;
@@ -554,7 +554,7 @@ body {
   height: 8px;
   border-radius: 50%;
   top: calc(var(--i) * 8px);
-  /* animation-delay uses --i which is set via inline style — this is safe
+  /* animation-delay uses --i which is set via inline style - this is safe
      because CSS custom properties in calc() work in all modern browsers. */
   animation: dna-swing 1.4s ease-in-out infinite;
   animation-delay: calc(var(--i) * 0.07s);
