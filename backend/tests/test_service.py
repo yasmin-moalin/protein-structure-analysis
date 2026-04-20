@@ -1,24 +1,12 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-test_service.py - unit tests for protein_service.py
-
-I test the service layer with all network calls mocked out so tests run
-offline and deterministically. The service layer's job is orchestration -
-combining fetcher output with parser output - so I verify that the merging
-logic is correct, fallbacks work when REST metadata fails, and the AlphaFold
-disclaimer is always present on predicted structures.
-
-Isolation strategy: patch the four functions imported by protein_service at
-the point of use (in the 'services.protein_service' namespace, not in the
-modules where they're defined).
-"""
+# unit tests for protein_service.py, network calls mocked out
 
 import pytest
 from unittest.mock import patch, MagicMock
 
 
-# Minimal PDB text sufficient for the parser to run without error
+# minimal pdb text sufficient for the parser to run without error
 _MINI_PDB = """\
 TITLE     HAEMOGLOBIN
 EXPDTA    X-RAY DIFFRACTION
@@ -40,16 +28,12 @@ _MOCK_REST_META = {
 
 
 class TestGetProteinInfo:
-    """Tests for the main PDB info assembly function."""
 
     @patch("services.protein_service.fetch_pdb_structure", return_value=_MINI_PDB)
     @patch("services.protein_service.fetch_pdb_metadata", return_value=_MOCK_REST_META)
     def test_returns_expected_fields(self, mock_meta, mock_struct):
         from services.protein_service import get_protein_info
         result = get_protein_info("1HHO")
-
-        # I check the contract: the service must always return these fields
-        # because the frontend depends on all of them being present.
         assert result["pdb_id"] == "1HHO"
         assert "title" in result
         assert "organism" in result
@@ -66,18 +50,15 @@ class TestGetProteinInfo:
     def test_rest_title_preferred_over_parsed_title(self, mock_meta, mock_struct):
         from services.protein_service import get_protein_info
         result = get_protein_info("1HHO")
-        # REST API title should win over the TITLE record from the PDB file
+        # rest api title should win over the title record from the pdb file
         assert result["title"] == "STRUCTURE OF HAEMOGLOBIN"
 
     @patch("services.protein_service.fetch_pdb_structure", return_value=_MINI_PDB)
     @patch("services.protein_service.fetch_pdb_metadata", side_effect=RuntimeError("API down"))
     def test_fallback_to_parsed_title_when_rest_fails(self, mock_meta, mock_struct):
         from services.protein_service import get_protein_info
-        # If the REST API call fails, the service must still return a result
-        # using data parsed from the PDB file itself.
         result = get_protein_info("1HHO")
         assert result is not None
-        # Title should fall back to the TITLE record in the PDB file
         assert result["title"] == "HAEMOGLOBIN"
 
     @patch("services.protein_service.fetch_pdb_structure", return_value=_MINI_PDB)
@@ -97,16 +78,13 @@ class TestGetProteinInfo:
 
 
 class TestGetAlphaFoldInfo:
-    """Tests for the AlphaFold info assembly function."""
 
     @patch("services.protein_service.fetch_alphafold_structure", return_value=_MINI_PDB)
     def test_returns_disclaimer(self, mock_struct):
         from services.protein_service import get_alphafold_info
         result = get_alphafold_info("P68871")
-        # The disclaimer is mandatory - scientific integrity requires that
-        # predicted structures are always clearly labelled.
         assert "disclaimer" in result
-        assert len(result["disclaimer"]) > 50  # non-trivial disclaimer text
+        assert len(result["disclaimer"]) > 50
 
     @patch("services.protein_service.fetch_alphafold_structure", return_value=_MINI_PDB)
     def test_is_predicted_flag_true(self, mock_struct):
@@ -117,7 +95,7 @@ class TestGetAlphaFoldInfo:
     @patch("services.protein_service.fetch_alphafold_structure", return_value=_MINI_PDB)
     def test_resolution_is_none(self, mock_struct):
         from services.protein_service import get_alphafold_info
-        # AlphaFold structures have no crystallographic resolution
+        # alphafold structures have no crystallographic resolution
         result = get_alphafold_info("P68871")
         assert result["resolution"] is None
 
@@ -137,7 +115,6 @@ class TestGetAlphaFoldInfo:
 
 
 class TestSearchProteins:
-    """Tests for the search wrapper function."""
 
     @patch("services.protein_service.search_rcsb", return_value=[
         {"identifier": "1CRN", "score": 0.95},

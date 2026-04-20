@@ -1,20 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-test_fetcher.py - unit tests for pdb_fetcher.py
-
-I test the fetcher in isolation using unittest.mock so no real HTTP calls
-are made. The tests verify:
-  1. Successful responses are returned and cached
-  2. 404 HTTP errors raise ValueError (not found - user-visible message)
-  3. Other HTTP errors raise RuntimeError (server error)
-  4. Network timeouts raise RuntimeError
-  5. The cache returns stale data after TTL expiry (simulated with time mock)
-  6. The RCSB search API payload is well-formed
-
-I do NOT test that RCSB actually returns haemoglobin when you search for it -
-that's an integration concern, not a unit concern.
-"""
+# unit tests for pdb_fetcher.py, all http calls mocked out
 
 import time
 import pytest
@@ -22,14 +8,9 @@ from unittest.mock import patch, MagicMock
 import requests
 
 
-# ---------------------------------------------------------------------------
-# fetch_pdb_structure tests
-# ---------------------------------------------------------------------------
-
 class TestFetchPdbStructure:
 
     def _make_response(self, status_code: int, text: str = "") -> MagicMock:
-        """Helper that builds a mock requests.Response object."""
         r = MagicMock()
         r.status_code = status_code
         r.text = text
@@ -90,7 +71,6 @@ class TestFetchPdbStructure:
 
     def test_cache_hit_avoids_second_request(self):
         from utils.pdb_fetcher import fetch_pdb_structure, _cache, _set_cached
-        # Pre-populate cache to simulate a previous fetch
         _set_cached("pdb_structure_1CRN", "CACHED_DATA")
 
         with patch("utils.pdb_fetcher._session") as mock_session:
@@ -99,10 +79,6 @@ class TestFetchPdbStructure:
 
         assert result == "CACHED_DATA"
 
-
-# ---------------------------------------------------------------------------
-# fetch_alphafold_structure tests
-# ---------------------------------------------------------------------------
 
 class TestFetchAlphaFoldStructure:
 
@@ -129,10 +105,6 @@ class TestFetchAlphaFoldStructure:
             with pytest.raises(RuntimeError, match="timed out"):
                 fetch_alphafold_structure("P68871")
 
-
-# ---------------------------------------------------------------------------
-# search_rcsb tests
-# ---------------------------------------------------------------------------
 
 class TestSearchRcsb:
 
@@ -182,10 +154,6 @@ class TestSearchRcsb:
                 search_rcsb("insulin")
 
 
-# ---------------------------------------------------------------------------
-# Cache TTL tests
-# ---------------------------------------------------------------------------
-
 class TestCacheTTL:
 
     def test_cache_expires_after_ttl(self):
@@ -194,7 +162,6 @@ class TestCacheTTL:
         _set_cached("test_key", "test_data")
         assert _get_cached("test_key") == "test_data"
 
-        # Simulate time advancing past TTL by patching time.time
         with patch("utils.pdb_fetcher.time") as mock_time:
             mock_time.time.return_value = time.time() + CACHE_TTL_SECONDS + 1
             assert _get_cached("test_key") is None

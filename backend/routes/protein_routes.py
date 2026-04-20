@@ -1,8 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-protein_routes.py: HTTP only - validation, status codes, and JSON formatting. All business logic lives in the service layer.
-"""
+# http only - validation, status codes, json. business logic is in the service layer
 
 import re
 import logging
@@ -22,11 +20,10 @@ logger = logging.getLogger(__name__)
 
 protein_bp = Blueprint("protein", __name__, url_prefix="/api")
 
-# PDB IDs are exactly 4 characters: a digit followed by three alphanumerics.
+# pdb id: digit followed by three alphanumerics
 _PDB_PATTERN = re.compile(r"^[0-9][A-Z0-9]{3}$")
 
-# UniProt accession format covers both legacy 6-char (e.g. P68871) and
-# the newer 10-char format (e.g. A0A000AB12), per UniProt documentation.
+# uniprot: covers 6-char legacy and 10-char new format
 _UNIPROT_PATTERN = re.compile(
     r"^[OPQ][0-9][A-Z0-9]{3}[0-9]([A-Z][A-Z0-9]{2}[0-9])?$"
     r"|^[A-NR-Z][0-9]([A-Z][A-Z0-9]{2}[0-9]){1,2}$"
@@ -34,7 +31,7 @@ _UNIPROT_PATTERN = re.compile(
 
 
 def _validate_pdb_id(pdb_id: str) -> Optional[str]:
-    """Return an error string if the PDB ID is invalid, else None."""
+    """return error string if pdb id invalid, else none"""
     if not pdb_id or not pdb_id.strip():
         return "PDB ID is required."
     if not _PDB_PATTERN.match(pdb_id.upper().strip()):
@@ -47,11 +44,11 @@ def _validate_pdb_id(pdb_id: str) -> Optional[str]:
 
 
 def _validate_uniprot_id(uniprot_id: str) -> Optional[str]:
-    """Return an error string if the UniProt accession is invalid, else None."""
+    """return error string if uniprot accession invalid, else none"""
     if not uniprot_id or not uniprot_id.strip():
         return "UniProt accession is required."
     cleaned = uniprot_id.upper().strip()
-    # A length check catches obvious bad input since UniProt accessions are always 6 or 10 characters.
+    # uniprot accessions are always 6 or 10 chars
     if len(cleaned) not in (6, 10) or not cleaned[0].isalpha():
         return (
             f"'{uniprot_id}' does not look like a valid UniProt accession. "
@@ -62,18 +59,15 @@ def _validate_uniprot_id(uniprot_id: str) -> Optional[str]:
 
 
 def _error(message: str, code: int) -> Response:
-    """Format a consistent JSON error response."""
     return make_response(jsonify({"error": message, "status": code}), code)
 
 
 def _ok(data: dict) -> Response:
-    """Format a consistent JSON success response."""
     return make_response(jsonify({"data": data, "status": 200}), 200)
 
 
 @protein_bp.route("/protein/<pdb_id>", methods=["GET"])
 def get_protein(pdb_id: str) -> Response:
-    """Return metadata and structural analysis for a PDB entry."""
     err = _validate_pdb_id(pdb_id)
     if err:
         return _error(err, 400)
@@ -93,7 +87,6 @@ def get_protein(pdb_id: str) -> Response:
 
 @protein_bp.route("/protein/<pdb_id>/structure", methods=["GET"])
 def get_protein_structure(pdb_id: str) -> Response:
-    """Serve the raw PDB file as plain text for NGL Viewer to load."""
     err = _validate_pdb_id(pdb_id)
     if err:
         return _error(err, 400)
@@ -114,7 +107,6 @@ def get_protein_structure(pdb_id: str) -> Response:
 
 @protein_bp.route("/alphafold/<uniprot_id>", methods=["GET"])
 def get_alphafold(uniprot_id: str) -> Response:
-    """Return metadata and structural info for an AlphaFold predicted structure."""
     err = _validate_uniprot_id(uniprot_id)
     if err:
         return _error(err, 400)
@@ -134,7 +126,6 @@ def get_alphafold(uniprot_id: str) -> Response:
 
 @protein_bp.route("/alphafold/<uniprot_id>/structure", methods=["GET"])
 def get_alphafold_structure(uniprot_id: str) -> Response:
-    """Serve raw AlphaFold PDB text for NGL Viewer."""
     err = _validate_uniprot_id(uniprot_id)
     if err:
         return _error(err, 400)
@@ -155,7 +146,6 @@ def get_alphafold_structure(uniprot_id: str) -> Response:
 
 @protein_bp.route("/search", methods=["GET"])
 def search() -> Response:
-    """Search RCSB PDB by free text. GET because it's a read-only, idempotent operation."""
     query = request.args.get("q", "").strip()
 
     if not query:

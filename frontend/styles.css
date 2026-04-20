@@ -1,27 +1,3 @@
-﻿/* ============================================================
-   ProteinVis - styles.css
-   Dark scientific theme following Meyer & Dykes (2020) principles:
-   visual hierarchy through typography, contrast ratios that meet
-   WCAG AA for accessibility, and consistent spatial grouping to
-   reduce cognitive load for novice users.
-
-   Colour palette:
-     Deep navy background: #070b14
-     Panel surface:        #0d1525
-     Subtle border:        #1e2d4a
-     Cyan accent:          #22d3ee  (primary interactive elements)
-     Blue accent:          #3b82f6  (secondary actions, links)
-     Muted text:           #64748b
-     Body text:            #cbd5e1
-     Heading text:         #f1f5f9
-
-   Typography:
-     Syne - display headings (app header, section titles)
-     Inter - all body text and UI labels
-     DM Mono - PDB identifiers, numerical data, code values
-   ============================================================ */
-
-/* ---------- Reset & base ---------- */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -43,7 +19,7 @@ body {
   overflow: hidden;
 }
 
-/* Screen-reader only - used for hidden labels that assist AT users */
+/* screen reader only */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -56,13 +32,12 @@ body {
   border: 0;
 }
 
-/* Mono font utility - PDB IDs, numeric data */
 .mono {
   font-family: 'DM Mono', 'Fira Mono', monospace;
   letter-spacing: 0.03em;
 }
 
-/* ---------- App header ---------- */
+/* app header */
 .app-header {
   display: flex;
   align-items: center;
@@ -105,7 +80,7 @@ body {
   font-style: italic;
 }
 
-/* ---------- Three-panel layout ---------- */
+/* three panel layout */
 .app-layout {
   display: grid;
   grid-template-columns: 260px 1fr 280px;
@@ -114,7 +89,6 @@ body {
   min-height: 0;
 }
 
-/* ---------- Panel base ---------- */
 .panel {
   display: flex;
   flex-direction: column;
@@ -155,7 +129,6 @@ body {
 .panel--metadata::-webkit-scrollbar { width: 4px; }
 .panel--metadata::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 2px; }
 
-/* ---------- Panel sections (left panel) ---------- */
 .panel-section {
   padding: 1rem 1rem 0.75rem;
   border-bottom: 1px solid #1a2540;
@@ -182,7 +155,6 @@ body {
   margin-bottom: 0.65rem;
 }
 
-/* ---------- Inputs ---------- */
 .input-group {
   margin-bottom: 0.75rem;
 }
@@ -234,7 +206,6 @@ body {
 
 .text-input::placeholder { color: #334155; }
 
-/* ---------- Selects ---------- */
 .select {
   width: 100%;
   background: #0a1020;
@@ -265,7 +236,6 @@ body {
   padding: 0.3rem 1.6rem 0.3rem 0.5rem;
 }
 
-/* ---------- Buttons ---------- */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -386,7 +356,6 @@ body {
 
 .btn--full { width: 100%; }
 
-/* ---------- Button row layouts ---------- */
 .btn-row {
   display: flex;
   flex-wrap: wrap;
@@ -399,7 +368,6 @@ body {
   gap: 0.4rem;
 }
 
-/* ---------- Control row (label + compact select) ---------- */
 .control-row {
   display: flex;
   align-items: center;
@@ -408,7 +376,6 @@ body {
 }
 .control-row .input-label { margin-bottom: 0; }
 
-/* ---------- Chain toggles ---------- */
 .chain-toggles {
   display: flex;
   flex-direction: column;
@@ -445,7 +412,6 @@ body {
   margin-left: auto;
 }
 
-/* ---------- Search results ---------- */
 .search-results {
   margin-top: 0.5rem;
   max-height: 200px;
@@ -477,7 +443,6 @@ body {
   min-width: 40px;
 }
 
-/* ---------- Measurement ---------- */
 .measure-status {
   font-size: 0.75rem;
   color: #22d3ee;
@@ -496,9 +461,7 @@ body {
   margin-top: 0.4rem;
 }
 
-/* ============================================================
-   3D VIEWPORT PANEL
-   ============================================================ */
+/* viewport */
 .ngl-viewport {
   flex: 1;
   width: 100%;
@@ -506,14 +469,13 @@ body {
   position: relative;
 }
 
-/* NGL creates a canvas inside this div - make sure the canvas fills it */
+/* ngl creates a canvas inside this div */
 .ngl-viewport canvas {
   display: block;
   width: 100% !important;
   height: 100% !important;
 }
 
-/* ---------- Loading overlay ---------- */
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -526,15 +488,10 @@ body {
   gap: 1rem;
 }
 
-/* DNA double helix loading animation.
-   I position each dot using nth-child rules with pre-computed values from
-   sin(i * 36°) rather than using the CSS sin() function, which only landed
-   in Chrome 111 (March 2023) and would silently break on any slightly older
-   browser. Pre-computing avoids the runtime dependency entirely.
-
-   The helix effect comes from combining fixed horizontal positions (the sine
-   wave) with a horizontal swing animation that has a per-dot delay - this
-   makes adjacent dots appear to chase each other in opposite phases. */
+/* dna loader animation
+   positions use pre-computed sin(i * 36deg) values instead of css sin()
+   which wasnt widely supported when i wrote this
+   left = 50% + 22px * sin(i * 36deg) */
 .dna-loader {
   height: 80px;
   display: flex;
@@ -554,15 +511,11 @@ body {
   height: 8px;
   border-radius: 50%;
   top: calc(var(--i) * 8px);
-  /* animation-delay uses --i which is set via inline style - this is safe
-     because CSS custom properties in calc() work in all modern browsers. */
   animation: dna-swing 1.4s ease-in-out infinite;
   animation-delay: calc(var(--i) * 0.07s);
 }
 
-/* Pre-computed horizontal positions: left = 50% + 22px * sin(i * 36°).
-   sin values (rounded): 0°=0, 36°=0.588, 72°=0.951, 108°=0.951, 144°=0.588,
-   180°=0, 216°=-0.588, 252°=-0.951, 288°=-0.951, 324°=-0.588 */
+/* sin values: 0=0 36=0.588 72=0.951 108=0.951 144=0.588 180=0 216=-0.588 252=-0.951 288=-0.951 324=-0.588 */
 .dna-dot:nth-child(1)  { left: 50.0%; }
 .dna-dot:nth-child(2)  { left: 62.9%; }
 .dna-dot:nth-child(3)  { left: 70.9%; }
@@ -574,7 +527,7 @@ body {
 .dna-dot:nth-child(9)  { left: 29.1%; }
 .dna-dot:nth-child(10) { left: 37.1%; }
 
-/* Alternate cyan and blue for the two strands */
+/* alternate cyan and blue for two strands */
 .dna-dot:nth-child(odd)  { background: #22d3ee; box-shadow: 0 0 6px rgba(34,211,238,0.6); }
 .dna-dot:nth-child(even) { background: #3b82f6; box-shadow: 0 0 6px rgba(59,130,246,0.6); }
 
@@ -589,7 +542,6 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Animated dots after "Loading structure" */
 .loading-dots::after {
   content: '';
   animation: loading-dots 1.5s steps(3, end) infinite;
@@ -601,7 +553,6 @@ body {
   100% { content: ''; }
 }
 
-/* ---------- Error overlay ---------- */
 .error-overlay {
   position: absolute;
   inset: 0;
@@ -628,7 +579,6 @@ body {
 .error-icon { color: #ef4444; }
 .error-message { font-size: 0.9rem; color: #cbd5e1; line-height: 1.5; }
 
-/* ---------- Empty state ---------- */
 .empty-state {
   position: absolute;
   inset: 0;
@@ -643,7 +593,7 @@ body {
   pointer-events: none;
 }
 
-/* Allow the CTA buttons to be clickable even though the container is not */
+/* cta buttons need to be clickable even though parent has pointer-events none */
 .empty-state .empty-cta { pointer-events: all; }
 .empty-state .btn--outline-mono { pointer-events: all; }
 
@@ -666,7 +616,6 @@ body {
   50%       { transform: translateY(-12px) rotate(2deg); }
 }
 
-/* Animate the strand paths for a flowing DNA effect */
 .float-strand-1 {
   stroke-dasharray: 350;
   stroke-dashoffset: 350;
@@ -727,7 +676,6 @@ body {
   margin-top: 0.5rem;
 }
 
-/* ---------- Atom hover tooltip ---------- */
 .atom-tooltip {
   position: absolute;
   background: rgba(13, 21, 37, 0.95);
@@ -744,7 +692,6 @@ body {
   max-width: 220px;
 }
 
-/* ---------- AlphaFold disclaimer banner ---------- */
 .af-disclaimer {
   position: absolute;
   top: 8px;
@@ -766,7 +713,6 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ---------- Sequence viewer ---------- */
 .sequence-panel {
   flex-shrink: 0;
   background: #0a1020;
@@ -809,7 +755,6 @@ body {
   min-height: 50px;
 }
 
-/* Each residue span */
 .res {
   display: inline-block;
   padding: 1px 1.5px;
@@ -823,10 +768,9 @@ body {
 .res:focus-visible { outline: 1px solid #fff; outline-offset: 1px; }
 .res.res--selected { outline: 1px solid #fff; background-color: rgba(255,255,255,0.2) !important; }
 
-/* Secondary structure colours for sequence display */
-.res--helix { color: #070b14; background: #f97316; }  /* orange */
-.res--sheet { color: #070b14; background: #eab308; }  /* yellow */
-.res--loop  { color: #94a3b8; background: #1e2d4a; }  /* muted */
+.res--helix { color: #070b14; background: #f97316; }
+.res--sheet { color: #070b14; background: #eab308; }
+.res--loop  { color: #94a3b8; background: #1e2d4a; }
 
 .sequence-legend {
   display: flex;
@@ -853,9 +797,7 @@ body {
 .legend--sheet { background: #eab308; }
 .legend--loop  { background: #1e2d4a; border: 1px solid #334155; }
 
-/* ============================================================
-   METADATA PANEL
-   ============================================================ */
+/* metadata panel */
 .meta-placeholder {
   display: flex;
   flex-direction: column;
@@ -904,7 +846,6 @@ body {
   color: #fbbf24;
 }
 
-/* AlphaFold disclaimer block inside metadata panel */
 .meta-af-disclaimer {
   display: flex;
   gap: 0.5rem;
@@ -969,7 +910,6 @@ body {
 
 .meta-value--em { font-style: italic; }
 
-/* ---------- Metadata sections ---------- */
 .meta-section {
   padding: 0.85rem 0;
   border-bottom: 1px solid #1a2540;
@@ -987,7 +927,6 @@ body {
   margin-bottom: 0.6rem;
 }
 
-/* ---------- Secondary structure bar ---------- */
 .ss-bar-track {
   display: flex;
   height: 12px;
@@ -1033,7 +972,6 @@ body {
 .ss-swatch--sheet { background: #eab308; }
 .ss-swatch--loop  { background: #334155; border: 1px solid #475569; }
 
-/* ---------- Chain detail list ---------- */
 .chain-detail-list {
   display: flex;
   flex-direction: column;
@@ -1066,14 +1004,12 @@ body {
   font-family: 'DM Mono', monospace;
 }
 
-/* ---------- Authors ---------- */
 .meta-authors {
   font-size: 0.75rem;
   color: #64748b;
   line-height: 1.5;
 }
 
-/* ---------- Links ---------- */
 .meta-links {
   display: flex;
   flex-direction: column;
@@ -1095,16 +1031,11 @@ body {
 .meta-link--af { color: #fbbf24; }
 .meta-link--af:hover { color: #fde68a; }
 
-/* ---------- Export button ---------- */
 .meta-content .btn--primary {
   margin-top: 0.85rem;
   font-size: 0.82rem;
 }
 
-/* ---------- Representation tooltip description ---------- */
-/* A plain-English line below the representation select explaining what
-   each view reveals. Implements the multiple-representations principle
-   from Kozlíková et al. (2015) by giving educational context for each choice. */
 .repr-tip {
   font-size: 0.72rem;
   color: #64748b;
@@ -1113,9 +1044,6 @@ body {
   min-height: 2.4em; /* keep layout stable when text changes */
 }
 
-/* ---------- SS count label ---------- */
-/* Small residue count shown alongside percentage in the SS breakdown.
-   Lets users cross-check against RCSB's own annotations. */
 .ss-count {
   font-family: 'DM Mono', monospace;
   font-size: 0.68rem;
@@ -1123,7 +1051,6 @@ body {
   margin-left: 0.35rem;
 }
 
-/* ---------- Residue info panel ---------- */
 .residue-info-panel {
   background: rgba(34, 211, 238, 0.05);
   border: 1px solid rgba(34, 211, 238, 0.2);
@@ -1139,7 +1066,6 @@ body {
   line-height: 1.4;
 }
 
-/* ---------- Data verified indicator ---------- */
 .data-verified {
   display: flex;
   align-items: center;
@@ -1162,7 +1088,6 @@ body {
   color: #fbbf24;
 }
 
-/* ---------- Search history ---------- */
 .search-history {
   display: flex;
   align-items: center;
@@ -1206,7 +1131,6 @@ body {
   border-color: rgba(59, 130, 246, 0.5);
 }
 
-/* ---------- Chain toggle row with Isolate button ---------- */
 .chain-toggle-row {
   display: flex;
   align-items: center;
@@ -1237,10 +1161,7 @@ body {
   padding: 0.25rem 0.6rem;
 }
 
-/* ---------- Comparison mode ---------- */
-/* I use a flex row rather than CSS grid so both NGL canvases resize naturally
-   when the panel width changes (e.g. window resize). The NGL stage will call
-   handleResize via JS when the comparison mode state changes. */
+/* comparison mode - flex so both canvases resize naturally on window resize */
 .viewport-row {
   flex: 1;
   display: flex;
@@ -1248,12 +1169,10 @@ body {
   position: relative;
 }
 
-/* In normal mode the primary viewer fills the row */
 .viewport-row .ngl-viewport {
   flex: 1;
 }
 
-/* In comparison mode both viewers share the row equally */
 .viewport-row.comparison-active .ngl-viewport {
   flex: 1;
 }
@@ -1282,7 +1201,7 @@ body {
   text-overflow: ellipsis;
 }
 
-/* ---------- Onboarding tour overlay ---------- */
+/* tour overlay */
 .tour-overlay {
   position: fixed;
   inset: 0;
@@ -1394,7 +1313,6 @@ body {
   gap: 0.5rem;
 }
 
-/* ---------- Help ? buttons ---------- */
 .section-heading {
   display: flex;
   align-items: center;
@@ -1432,7 +1350,6 @@ body {
   font-size: 0.55rem;
 }
 
-/* ---------- Shared help popover ---------- */
 .help-popover {
   position: fixed;
   z-index: 150;
@@ -1470,7 +1387,6 @@ body {
 }
 .help-popover-close:hover { color: #94a3b8; }
 
-/* ---------- Input pulse (call-to-action on first load) ---------- */
 @keyframes input-pulse {
   0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
   50%       { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.25); }
@@ -1480,7 +1396,6 @@ body {
   animation: input-pulse 2s ease-in-out infinite;
 }
 
-/* ---------- Metadata placeholder hints ---------- */
 .meta-placeholder-title {
   font-family: 'Syne', sans-serif;
   font-size: 0.9rem;
@@ -1513,7 +1428,6 @@ body {
   margin-top: 1px;
 }
 
-/* ---------- Header action buttons (Clear + Tour) ---------- */
 .header-actions {
   display: flex;
   align-items: center;
@@ -1540,7 +1454,6 @@ body {
   color: #22d3ee;
 }
 
-/* ---------- Search result title ---------- */
 .search-result-title {
   display: block;
   font-size: 0.68rem;
@@ -1552,7 +1465,6 @@ body {
   margin-top: 1px;
 }
 
-/* ---------- Comparison pane loading indicator ---------- */
 .compare-loading {
   position: absolute;
   top: 50%;
@@ -1572,7 +1484,6 @@ body {
   font-family: 'DM Mono', monospace;
 }
 
-/* ---------- Typeahead search ---------- */
 .typeahead-wrapper {
   position: relative;
 }
@@ -1632,7 +1543,6 @@ body {
   font-style: italic;
 }
 
-/* ---------- Advanced load (details/summary) ---------- */
 .advanced-load {
   margin-top: 0.5rem;
 }
@@ -1661,7 +1571,6 @@ details[open] .advanced-load-summary::before {
   transform: rotate(90deg);
 }
 
-/* ---------- Distance measurement steps ---------- */
 .measure-steps {
   list-style: none;
   margin-bottom: 0.6rem;
@@ -1712,7 +1621,6 @@ details[open] .advanced-load-summary::before {
   color: #4ade80;
 }
 
-/* ---------- Viewport measure-mode ring ---------- */
 @keyframes measure-ring-pulse {
   0%, 100% { box-shadow: inset 0 0 0 2px rgba(34, 211, 238, 0.5); }
   50%       { box-shadow: inset 0 0 0 3px rgba(34, 211, 238, 0.9); }
@@ -1727,16 +1635,13 @@ details[open] .advanced-load-summary::before {
   animation: measure-ring-pulse 1.2s ease-in-out infinite;
 }
 
-/* ---------- Utility: hidden ---------- */
 [hidden] { display: none !important; }
 
-/* ---------- Focus visible global ---------- */
 :focus-visible {
   outline: 2px solid #22d3ee;
   outline-offset: 2px;
 }
 
-/* Remove focus ring for mouse users while keeping it for keyboard */
 :focus:not(:focus-visible) {
   outline: none;
 }

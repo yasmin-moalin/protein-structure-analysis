@@ -1,8 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-pdb_fetcher.py: every outbound HTTP call goes through here. I use a requests.Session with a 1-hour in-memory cache so the same structure is never fetched twice.
-"""
+# all outbound http calls go through here
+# requests.Session with 1 hour in-memory cache so same structure is never fetched twice
 
 import time
 import logging
@@ -13,9 +12,9 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-CACHE_TTL_SECONDS = 3600  # 1 hour, covers any realistic session
+CACHE_TTL_SECONDS = 3600  # 1 hour
 
-# Simple dict cache: { key: (data, timestamp) }
+# simple dict cache: { key: (data, timestamp) }
 _cache: dict[str, tuple] = {}
 
 _session = requests.Session()
@@ -32,7 +31,6 @@ ALPHAFOLD_API_BASE = "https://alphafold.ebi.ac.uk/api"
 
 
 def _get_cached(key: str) -> Optional[object]:
-    """Return cached value if it exists and hasn't expired, else None."""
     if key in _cache:
         data, timestamp = _cache[key]
         if time.time() - timestamp < CACHE_TTL_SECONDS:
@@ -44,12 +42,11 @@ def _get_cached(key: str) -> Optional[object]:
 
 
 def _set_cached(key: str, data: object) -> None:
-    """Store data in the cache with current timestamp."""
     _cache[key] = (data, time.time())
 
 
 def fetch_pdb_structure(pdb_id: str) -> str:
-    """Download the PDB file from RCSB and return the raw text, checking the cache first to avoid repeated network calls."""
+    """download pdb file from rcsb, checks cache first"""
     pdb_id = pdb_id.upper().strip()
     cache_key = f"pdb_structure_{pdb_id}"
 
@@ -85,7 +82,7 @@ def fetch_pdb_structure(pdb_id: str) -> str:
 
 
 def fetch_pdb_metadata(pdb_id: str) -> dict:
-    """Fetch structured metadata from the RCSB Data API - I use this alongside the PDB parser because the REST JSON is cleaner for fields like title and resolution."""
+    """fetch structured metadata from rcsb data api - cleaner json for title and resolution"""
     pdb_id = pdb_id.upper().strip()
     cache_key = f"pdb_metadata_{pdb_id}"
 
@@ -115,7 +112,7 @@ def fetch_pdb_metadata(pdb_id: str) -> dict:
 
 
 def fetch_alphafold_structure(uniprot_id: str) -> str:
-    """Download an AlphaFold structure from EBI using the UniProt accession, with a longer timeout since AlphaFold files can be large."""
+    """download alphafold structure from ebi, longer timeout for large files"""
     uniprot_id = uniprot_id.upper().strip()
     cache_key = f"alphafold_structure_{uniprot_id}"
 
@@ -152,7 +149,8 @@ def fetch_alphafold_structure(uniprot_id: str) -> str:
 
 
 def fetch_alphafold_metadata(uniprot_id: str) -> dict:
-    """Fetch organism, gene, and description from the AlphaFold EBI API - the PDB header alone doesn't include these. Returns empty dict on failure so the caller can fall back gracefully."""
+    """fetch organism, gene, description from alphafold ebi api
+    pdb header alone doesn't include these, returns empty dict on failure"""
     uniprot_id = uniprot_id.upper().strip()
     cache_key = f"alphafold_meta_{uniprot_id}"
 
@@ -167,7 +165,7 @@ def fetch_alphafold_metadata(uniprot_id: str) -> dict:
         response = _session.get(url, timeout=10)
         response.raise_for_status()
         data = response.json()
-        # The API returns a list of predictions; I take the first which covers the standard isoform.
+        # api returns a list, first entry is the standard isoform
         result: dict = data[0] if isinstance(data, list) and data else {}
         _set_cached(cache_key, result)
         return result
@@ -179,7 +177,7 @@ def fetch_alphafold_metadata(uniprot_id: str) -> dict:
 
 
 def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
-    """Run a full-text search against RCSB, capped at 25 results. I fetch titles for the top 8 in parallel so they show up fast."""
+    """full-text search against rcsb, top 8 titles fetched in parallel"""
     cache_key = f"search_{query.lower().strip()}_{max_results}"
     cached = _get_cached(cache_key)
     if cached:
@@ -213,7 +211,7 @@ def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
                 "title": None,
             })
 
-        # Fetch titles for the top 8 results in parallel (serial would be slow).
+        # fetch titles for top 8 in parallel - serial would be slow
         top8 = results[:8]
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             future_to_result = {
@@ -225,7 +223,7 @@ def search_rcsb(query: str, max_results: int = 25) -> list[dict]:
                     meta = future.result()
                     r["title"] = (meta.get("struct") or {}).get("title")
                 except Exception:
-                    pass  # title stays None, frontend shows PDB ID alone
+                    pass  # title stays none, frontend shows pdb id alone
 
         _set_cached(cache_key, results)
         logger.info("Search for '%s' returned %d results", query, len(results))

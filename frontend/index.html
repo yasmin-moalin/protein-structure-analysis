@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,31 +6,19 @@
   <title>ProteinVis - Protein Structure Visualisation</title>
   <meta name="description" content="Interactive 3D protein structure visualisation for education and research. Load structures from the RCSB Protein Data Bank or the AlphaFold Database.">
 
-  <!-- Google Fonts: Syne (display), Inter (body), DM Mono (identifiers/data).
-       I picked these three because they form a clear visual hierarchy - Syne's
-       wide letterforms work well for headings, Inter is optimised for UI text,
-       and DM Mono is readable at small sizes which matters for PDB IDs and
-       numeric data values. -->
+  <!-- google fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=Inter:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles.css">
 
-  <!-- NGL Viewer (Rose et al., 2018) - loaded from CDN so users don't need
-       to install anything. NGL uses WebGL for hardware-accelerated rendering,
-       which is why the visualisation runs smoothly in a browser without any
-       native code. I use the 2.0.0-dev.37 release, the current stable version. -->
+  <!-- ngl viewer cdn -->
   <script src="https://unpkg.com/ngl@2.0.0-dev.37/dist/ngl.js"></script>
 </head>
 <body>
 
-  <!-- ===== ONBOARDING TOUR OVERLAY =====
-       Shown only on first visit (localStorage flag 'pv_tour_done').
-       Four steps guide the user through the core interactions so they
-       can explore without reading documentation.
-       Directly implements Nielsen's "help and documentation" heuristic
-       and "recognition over recall". -->
+  <!-- onboarding tour -->
   <div id="tour-overlay" class="tour-overlay" role="dialog" aria-modal="true"
        aria-labelledby="tour-title" hidden>
     <div class="tour-backdrop"></div>
@@ -55,13 +43,13 @@
     </div>
   </div>
 
-  <!-- Shared help popover - repositioned by JS when a ? button is clicked -->
+  <!-- help popover -->
   <div id="help-popover" class="help-popover" role="tooltip" aria-live="polite" hidden>
     <p id="help-popover-text" class="help-popover-text"></p>
     <button id="help-popover-close" class="help-popover-close" aria-label="Close help">✕</button>
   </div>
 
-  <!-- App header -->
+  <!-- app header -->
   <header class="app-header" role="banner">
     <div class="header-brand">
       <span class="brand-name">ProteinVis</span>
@@ -69,15 +57,12 @@
     </div>
     <p class="header-tagline">Interactive 3D Protein Structure Visualisation</p>
     <div class="header-actions">
-      <!-- Clear button - resets the viewer without requiring a page refresh.
-           A first-time user who loads the wrong structure should not need
-           to know to press F5 to start over - Nielsen's error recovery. -->
       <button id="clear-viewer-btn" class="btn btn--header-ghost" hidden
               aria-label="Clear the current structure and reset the viewer">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         Clear
       </button>
-      <!-- Tour replay button - lets users revisit the onboarding tour any time -->
+      <!-- tour button -->
       <button id="replay-tour-btn" class="btn btn--header-ghost"
               aria-label="Replay the getting started tour">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -86,28 +71,18 @@
     </div>
   </header>
 
-  <!-- Three-panel main layout:
-       Controls left | 3D Viewport centre | Metadata right
-       This mirrors the layout pattern of professional tools like ChimeraX
-       (Goddard et al., 2018) and PyMOL but simplified for novice users
-       following the principles in Meyer and Dykes (2020). -->
+  <!-- panel main layout -->
   <main class="app-layout" role="main" aria-label="Protein visualisation workspace">
 
-    <!-- ===== LEFT PANEL: Controls ===== -->
+    <!-- left panel -->
     <aside class="panel panel--controls" aria-label="Visualisation controls">
 
-      <!-- Load section -->
       <section class="panel-section" aria-labelledby="load-heading">
         <h2 id="load-heading" class="section-heading">
           Load Structure
           <button class="help-btn" data-help="Enter a 4-character PDB ID (e.g. 1CRN, 4HHB) to load an experimentally determined structure, or a UniProt accession (e.g. P68871) to load an AlphaFold prediction. Not sure what to load? Try the Quick Load buttons below." aria-label="Help for Load Structure">?</button>
         </h2>
 
-        <!-- Smart search - the primary way to find a protein.
-             Typing any name or keyword shows live suggestions as you type.
-             Clicking a result loads it directly - no need to know PDB IDs.
-             I redesigned this so users never need to look up an ID externally,
-             directly addressing Nielsen's "recognition over recall" heuristic. -->
         <div class="input-group">
           <label for="search-input" class="input-label">
             Search by name or PDB ID
@@ -123,14 +98,12 @@
               <button id="search-btn" class="btn btn--primary"
                       aria-label="Search">Search</button>
             </div>
-            <!-- Live typeahead dropdown -->
             <ul id="typeahead-list" class="typeahead-list" role="listbox"
                 aria-label="Search suggestions" hidden></ul>
           </div>
           <span class="input-hint">Type a name or a 4-character PDB ID - results appear as you type</span>
         </div>
 
-        <!-- Advanced: direct PDB ID entry (collapsed by default) -->
         <details class="advanced-load" id="advanced-load-details">
           <summary class="advanced-load-summary">Advanced: load by exact ID</summary>
           <div class="input-group" style="margin-top:0.5rem">
@@ -164,17 +137,13 @@
         <div id="search-results" class="search-results" aria-live="polite"
              aria-label="Search results" hidden></div>
 
-        <!-- Search history - recent PDB loads from localStorage.
-             I store the last 5 entries so returning users don't have to
-             re-type identifiers they've already used. This satisfies
-             Nielsen's "flexibility and efficiency of use" heuristic. -->
+        <!-- recent searches -->
         <div id="search-history" class="search-history" aria-label="Recent searches" hidden>
           <span class="history-label">Recent</span>
           <div id="history-chips" class="history-chips" role="list"></div>
         </div>
       </section>
 
-      <!-- Quick load examples -->
       <section class="panel-section" aria-labelledby="quick-heading">
         <h2 id="quick-heading" class="section-heading">Quick Load</h2>
         <div class="quick-load-grid" role="list">
@@ -197,11 +166,6 @@
         </div>
       </section>
 
-      <!-- Representation - buttons with tooltips explaining what each view reveals.
-           ? button explains the educational purpose of multiple representations.
-           My literature review argues multiple representations reduce cognitive
-           load (Sweller) by letting users match the view to their learning goal.
-           The tooltip descriptions are directly cited from Kozlíková et al. (2015). -->
       <section class="panel-section" aria-labelledby="repr-heading">
         <h2 id="repr-heading" class="section-heading">
           Representation
@@ -217,11 +181,9 @@
           <option value="backbone"    data-tip="Backbone trace - connects Cα atoms only; reveals the chain path without side-chain clutter.">Backbone trace</option>
           <option value="spacefill"   data-tip="Spacefill (CPK) - every atom shown at van der Waals radius; reveals the true shape and volume of the protein.">Spacefill (CPK)</option>
         </select>
-        <!-- Tooltip description updated on select change via JS -->
         <p id="repr-description" class="repr-tip" aria-live="polite"></p>
       </section>
 
-      <!-- Colour scheme -->
       <section class="panel-section" aria-labelledby="colour-heading">
         <h2 id="colour-heading" class="section-heading">Colour Scheme</h2>
         <select id="colour-select" class="select"
@@ -231,16 +193,11 @@
           <option value="bfactor">B-factor / confidence</option>
           <option value="hydrophobicity">Hydrophobicity</option>
           <option value="element">By element (CPK)</option>
-          <!-- Colour-blind safe option uses a blue/orange palette that is
-               distinguishable under deuteranopia (green-blind) and protanopia
-               (red-blind), the two most common colour vision deficiencies.
-               Inclusive design is a requirement of WCAG 2.1 and reflects
-               Meyer & Dykes (2020) guidance on accessible scientific vis. -->
+          <!-- colourblind safe option -->
           <option value="colorblind">Colour-blind safe (blue/orange)</option>
         </select>
       </section>
 
-      <!-- Chain visibility - populated dynamically after load -->
       <section class="panel-section" id="chain-section" aria-labelledby="chain-heading" hidden>
         <h2 id="chain-heading" class="section-heading">
           Chain Visibility
@@ -250,7 +207,6 @@
              aria-label="Toggle individual chain visibility"></div>
       </section>
 
-      <!-- View controls -->
       <section class="panel-section" aria-labelledby="view-heading">
         <h2 id="view-heading" class="section-heading">
           View Controls
@@ -268,8 +224,7 @@
           </select>
         </div>
 
-        <!-- Zoom buttons - especially useful on touchpads where scroll zoom
-             may not be obvious. Two-finger scroll also zooms. -->
+        <!-- zoom buttons -->
         <div class="btn-row">
           <button id="zoom-in-btn" class="btn btn--view" title="Zoom in"
                   aria-label="Zoom in on the structure">
@@ -301,10 +256,7 @@
         </div>
       </section>
 
-      <!-- Comparison mode - two structures side by side.
-           This feature differentiates ProteinVis from RCSB's own viewer,
-           which does not offer split-screen structural comparison. I identified
-           this as a gap in my tool comparison chapter. -->
+      <!-- comparison mode -->
       <section class="panel-section" id="compare-section" aria-labelledby="compare-heading">
         <h2 id="compare-heading" class="section-heading">
           Compare Structures
@@ -330,15 +282,13 @@
         </div>
       </section>
 
-      <!-- Distance measurement - redesigned with numbered steps so users
-           know exactly what to do at each stage of the two-click interaction. -->
+      <!-- distance measurement -->
       <section class="panel-section" aria-labelledby="measure-heading">
         <h2 id="measure-heading" class="section-heading">
           Distance Measurement
           <button class="help-btn" data-help="Measures the straight-line distance between any two atoms in Ångströms (Å). 1 Å = 0.1 nanometres. Typical bond lengths are 1–2 Å; protein domains can be 10–50 Å apart. Click Measure, then click two atoms on the structure." aria-label="Help for distance measurement">?</button>
         </h2>
 
-        <!-- Step-by-step instructions shown when measure mode is active -->
         <ol id="measure-steps" class="measure-steps" hidden>
           <li id="measure-step-1" class="measure-step measure-step--active">
             <span class="step-num">1</span>
@@ -370,10 +320,9 @@
 
     </aside>
 
-    <!-- ===== CENTRE PANEL: 3D Viewport ===== -->
+    <!-- viewport -->
     <div class="panel panel--viewport">
 
-      <!-- Loading overlay -->
       <div id="loading-overlay" class="loading-overlay" role="status"
            aria-label="Loading protein structure, please wait" hidden>
         <div class="dna-loader" aria-hidden="true">
@@ -393,7 +342,6 @@
         <p class="loading-label">Loading structure<span class="loading-dots" aria-hidden="true"></span></p>
       </div>
 
-      <!-- Error overlay -->
       <div id="error-overlay" class="error-overlay" role="alert" aria-atomic="true" hidden>
         <div class="error-card">
           <svg class="error-icon" width="36" height="36" viewBox="0 0 24 24" fill="none"
@@ -407,7 +355,7 @@
         </div>
       </div>
 
-      <!-- Empty state - shown before any structure is loaded -->
+      <!-- empty state -->
       <div id="empty-state" class="empty-state" aria-label="No structure loaded - use the controls on the left to load one">
         <div class="empty-dna" aria-hidden="true">
           <svg viewBox="0 0 100 260" class="dna-float-svg" xmlns="http://www.w3.org/2000/svg">
@@ -448,38 +396,25 @@
         </div>
       </div>
 
-      <!-- Viewport row - holds one or two NGL canvases depending on comparison mode -->
       <div id="viewport-row" class="viewport-row">
-        <!-- Primary NGL WebGL container -->
         <div id="viewport" class="ngl-viewport"
              role="img"
              aria-label="3D protein structure viewer - rotate with left mouse button, zoom with scroll wheel, pan with right mouse button"></div>
 
-        <!-- Compare pane B loading indicator - shown while the second structure
-             fetches. Absence of feedback during loading is a direct Nielsen
-             heuristic 1 (visibility of system status) failure. -->
         <div id="compare-loading" class="compare-loading" hidden>
           <span class="compare-loading-text">Loading structure<span class="loading-dots" aria-hidden="true"></span></span>
         </div>
 
-        <!-- Secondary viewer - hidden until comparison mode is activated.
-             I create a separate NGL Stage here rather than overlaying on the
-             same canvas so both structures can be independently rotated and
-             zoomed - a genuine advantage over RCSB's viewer. -->
+        <!-- secondary viewer for comparison mode -->
         <div id="viewport-b" class="ngl-viewport ngl-viewport--compare"
              role="img" aria-label="Second structure for comparison" hidden></div>
       </div>
 
-      <!-- Measure mode ring - a pulsing border overlay shown when the user
-           is in measurement mode so they know the viewport is "listening" for
-           atom clicks. Without this, the viewport looks identical in and out
-           of measure mode - a clear Nielsen heuristic 1 failure. -->
       <div id="measure-ring" class="measure-ring" aria-hidden="true" hidden></div>
 
-      <!-- Atom hover tooltip - positioned absolute relative to viewport -->
       <div id="atom-tooltip" class="atom-tooltip" role="tooltip" aria-live="polite" hidden></div>
 
-      <!-- AlphaFold disclaimer banner - shown only for predicted structures -->
+      <!-- alphafold disclaimer banner -->
       <div id="af-disclaimer" class="af-disclaimer" role="note" aria-live="polite" hidden>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -489,7 +424,7 @@
         <span>Predicted structure (AlphaFold) - not experimentally determined. B-factor column = pLDDT confidence score.</span>
       </div>
 
-      <!-- Sequence viewer - collapsible strip at bottom of viewport -->
+      <!-- sequence viewer -->
       <div id="sequence-panel" class="sequence-panel" hidden>
         <div class="sequence-header">
           <h3 class="sequence-title">
@@ -519,7 +454,7 @@
 
     </div>
 
-    <!-- ===== RIGHT PANEL: Metadata ===== -->
+    <!-- right panel -->
     <aside class="panel panel--metadata" aria-label="Structure metadata and analysis">
 
       <div id="metadata-placeholder" class="meta-placeholder">
@@ -555,14 +490,8 @@
 
       <div id="metadata-content" class="meta-content" hidden>
 
-        <!-- Source badge -->
         <div id="source-badge" class="source-badge" aria-live="polite"></div>
 
-        <!-- Residue click info panel - populated when user clicks an atom in the
-             3D viewer or a residue in the sequence strip. This turns passive
-             viewing into active exploration: clicking anything reveals what it is.
-             Directly implements Sweller's scaffolded learning principle and
-             Nielsen's "visibility of system status" heuristic. -->
         <section id="residue-info-section" class="meta-section residue-info-panel"
                  aria-labelledby="ri-heading" aria-live="polite" hidden>
           <h3 id="ri-heading" class="meta-section-heading">Selected Residue</h3>
@@ -584,7 +513,7 @@
               <dd id="ri-ss" class="meta-value"></dd>
             </div>
           </dl>
-          <!-- pLDDT block - only shown for AlphaFold structures -->
+          <!-- plddt only for alphafold -->
           <div id="ri-plddt-block" hidden>
             <dl class="meta-grid" style="margin-top:0.5rem">
               <div class="meta-item">
@@ -603,12 +532,7 @@
           </div>
         </section>
 
-        <!-- AlphaFold disclaimer inside the metadata panel.
-             This supplements the viewport banner - the banner is a visual cue
-             while scrolling the metadata; this block ensures the disclaimer is
-             present in context alongside the structure's metadata fields,
-             satisfying the requirement that predicted structures are clearly
-             distinguished from experimental ones at all times. -->
+        <!-- alphafold disclaimer in metadata panel -->
         <div id="meta-af-disclaimer" class="meta-af-disclaimer" role="note"
              aria-label="AlphaFold prediction notice" hidden>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="flex-shrink:0;margin-top:1px">
@@ -622,10 +546,8 @@
           </div>
         </div>
 
-        <!-- Title -->
         <h2 id="meta-title" class="meta-title"></h2>
 
-        <!-- Stats grid -->
         <dl class="meta-grid" aria-label="Structure statistics">
           <div class="meta-item">
             <dt class="meta-label">Organism</dt>
@@ -635,9 +557,7 @@
             <dt class="meta-label">Method</dt>
             <dd id="meta-method" class="meta-value"></dd>
           </div>
-          <!-- Resolution shown for experimental structures; mean pLDDT shown
-               instead for AlphaFold predictions. Both use the same cell so
-               the layout doesn't shift between structure types. -->
+          <!-- resolution for xray, plddt for alphafold -->
           <div class="meta-item" id="meta-resolution-item">
             <dt class="meta-label" id="meta-resolution-label">Resolution</dt>
             <dd id="meta-resolution" class="meta-value mono"></dd>
@@ -654,23 +574,16 @@
             <dt class="meta-label">Residues</dt>
             <dd id="meta-residues" class="meta-value mono"></dd>
           </div>
-          <!-- Ligand count - populated for both PDB and AlphaFold structures.
-               Counting non-water HETATM residues reveals cofactors and bound
-               small molecules (e.g. HEM in haemoglobin, ATP in kinases).
-               This information is absent from most browser-based viewers. -->
           <div class="meta-item" id="meta-ligand-item" hidden>
             <dt class="meta-label">Ligands</dt>
             <dd id="meta-ligands" class="meta-value mono"></dd>
           </div>
-          <!-- Gene name - shown only for AlphaFold structures where the EBI
-               API supplies the HGNC gene symbol (e.g. HBB for haemoglobin β). -->
           <div class="meta-item" id="meta-gene-item" hidden>
             <dt class="meta-label">Gene</dt>
             <dd id="meta-gene" class="meta-value mono"></dd>
           </div>
         </dl>
 
-        <!-- Secondary structure breakdown -->
         <section class="meta-section" aria-labelledby="ss-heading">
           <h3 id="ss-heading" class="meta-section-heading">Secondary Structure</h3>
           <div class="ss-bar-track" role="img" aria-label="Secondary structure composition bar">
@@ -678,9 +591,6 @@
             <div id="ss-bar-sheet" class="ss-segment ss-segment--sheet" role="presentation"></div>
             <div id="ss-bar-loop"  class="ss-segment ss-segment--loop"  role="presentation"></div>
           </div>
-          <!-- I show both percentage and raw count so users can cross-check
-               against RCSB PDB annotation records - directly addressing my
-               supervisor's concern about verifying accuracy of visualised data. -->
           <ul class="ss-legend" aria-label="Secondary structure percentages">
             <li class="ss-item">
               <span class="ss-swatch ss-swatch--helix" aria-hidden="true"></span>
@@ -700,19 +610,16 @@
           </ul>
         </section>
 
-        <!-- Per-chain details -->
         <section class="meta-section" aria-labelledby="chain-detail-heading">
           <h3 id="chain-detail-heading" class="meta-section-heading">Chain Details</h3>
           <div id="chain-detail-list" class="chain-detail-list" aria-live="polite"></div>
         </section>
 
-        <!-- Authors -->
         <section class="meta-section" id="authors-section" aria-labelledby="authors-heading">
           <h3 id="authors-heading" class="meta-section-heading">Authors</h3>
           <p id="meta-authors" class="meta-authors"></p>
         </section>
 
-        <!-- External links -->
         <section class="meta-section" aria-labelledby="links-heading">
           <h3 id="links-heading" class="meta-section-heading">External Links</h3>
           <div class="meta-links">
@@ -727,16 +634,8 @@
           </div>
         </section>
 
-        <!-- Data accuracy check - a lightweight acceptance test running in the
-             browser. After each load, JS compares the residue count in the
-             metadata response with the actual ATOM-record-derived residue
-             count, and chain count likewise. A green "Data verified ✓" confirms
-             that what the frontend is displaying matches what the backend parsed,
-             rather than stale or truncated data. This is directly responsive to
-             my supervisor's point about verifying accuracy. -->
         <div id="data-verified" class="data-verified" aria-live="polite" hidden></div>
 
-        <!-- Export -->
         <button id="export-btn" class="btn btn--primary btn--full"
                 aria-label="Download structure metadata as a JSON file">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -752,7 +651,6 @@
 
   </main>
 
-  <!-- Screen-reader only utility class is defined in CSS -->
   <script src="main.js"></script>
 </body>
 </html>

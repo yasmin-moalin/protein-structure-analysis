@@ -1,8 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-protein_service.py: all business logic lives here, between the HTTP routes and the data fetchers. No Flask, just plain Python.
-"""
+# business logic layer - no flask, no http, just python
 
 import logging
 from typing import Optional
@@ -18,8 +16,7 @@ from parsers.structure_parser import parse_pdb_text
 
 logger = logging.getLogger(__name__)
 
-# Defined here (not in the route or frontend) because it's a factual statement
-# about the data source that belongs with the business logic.
+# disclaimer lives here not in the route because it's about the data source
 ALPHAFOLD_DISCLAIMER = (
     "This is a computationally predicted structure from the AlphaFold Database "
     "(Jumper et al., 2021), not an experimentally determined structure. "
@@ -30,7 +27,7 @@ ALPHAFOLD_DISCLAIMER = (
 
 
 def get_protein_info(pdb_id: str) -> dict:
-    """Merge RCSB REST metadata with parsed PDB data into one dict - falls back to PDB header fields if the REST call fails."""
+    """merge rcsb rest metadata with parsed pdb data, falls back to pdb header if rest fails"""
     pdb_id = pdb_id.upper().strip()
     logger.info("Building protein info package for: %s", pdb_id)
 
@@ -58,35 +55,30 @@ def get_protein_info(pdb_id: str) -> dict:
 
 
 def get_protein_structure_text(pdb_id: str) -> str:
-    """Return the raw PDB file text for NGL Viewer to load."""
+    """return raw pdb text for ngl to load"""
     return fetch_pdb_structure(pdb_id.upper().strip())
 
 
 def get_alphafold_info(uniprot_id: str) -> dict:
-    """Build the metadata dict for an AlphaFold prediction, filling in organism and gene from the EBI API since the PDB header doesn't include them."""
+    """build metadata dict for an alphafold prediction, ebi api fills in organism and gene"""
     uniprot_id = uniprot_id.upper().strip()
     logger.info("Building AlphaFold info package for UniProt: %s", uniprot_id)
 
     pdb_text = fetch_alphafold_structure(uniprot_id)
     parsed = parse_pdb_text(pdb_text)
 
-    # EBI API gives richer metadata than the PDB header: organism, gene, description.
     af_meta = fetch_alphafold_metadata(uniprot_id)
 
-    # Mean pLDDT is calculated here because it's derived across all chains - not something the parser should do.
+    # mean plddt calculated here because it spans all chains
     mean_plddt = _calculate_mean_plddt(parsed.get("sequence", {}))
 
     return {
         "uniprot_id": uniprot_id,
-        # EBI API 'uniprotDescription' is the standard protein name (e.g.
-        # "Hemoglobin subunit beta"), clearer than the PDB TITLE record.
         "title": (
             af_meta.get("uniprotDescription")
             or parsed.get("title")
             or f"AlphaFold prediction for {uniprot_id}"
         ),
-        # EBI API 'organismScientificName' is always the NCBI taxonomy name;
-        # more reliable than SOURCE record parsing for AF files.
         "organism": (
             af_meta.get("organismScientificName")
             or parsed.get("organism")
@@ -111,12 +103,12 @@ def get_alphafold_info(uniprot_id: str) -> dict:
 
 
 def get_alphafold_structure_text(uniprot_id: str) -> str:
-    """Return the raw AlphaFold PDB text for NGL Viewer to load."""
+    """return raw alphafold pdb text for ngl to load"""
     return fetch_alphafold_structure(uniprot_id.upper().strip())
 
 
 def search_proteins(query: str) -> list[dict]:
-    """Search RCSB and return just pdb_id, score, and title - full details are fetched on demand when the user picks a result."""
+    """search rcsb and return pdb_id, score, title - full details loaded on demand"""
     query = query.strip()
     if len(query) < 2:
         raise ValueError("Search query must be at least 2 characters.")
@@ -135,7 +127,7 @@ def search_proteins(query: str) -> list[dict]:
 
 
 def _fetch_rest_metadata_safe(pdb_id: str) -> dict:
-    """Fetch REST metadata safely, returning an empty dict on failure - a network hiccup here shouldn't prevent the structure from loading."""
+    """fetch rest metadata, return empty dict on failure so structure still loads"""
     try:
         raw = fetch_pdb_metadata(pdb_id)
         return _extract_rest_fields(raw)
@@ -145,7 +137,7 @@ def _fetch_rest_metadata_safe(pdb_id: str) -> dict:
 
 
 def _calculate_mean_plddt(sequence: dict) -> Optional[float]:
-    """Average the per-residue pLDDT scores (stored in the B-factor column by AlphaFold) across all chains."""
+    """average plddt scores across all chains - stored in b-factor column by alphafold"""
     scores = [
         r["bfactor"]
         for chain_data in sequence.values()
@@ -158,24 +150,21 @@ def _calculate_mean_plddt(sequence: dict) -> Optional[float]:
 
 
 def _extract_rest_fields(raw: dict) -> dict:
-    """Pull the fields I need from the nested RCSB REST API response."""
+    """pull the fields i need from the nested rcsb rest api response"""
     result: dict = {}
 
-    # Title: most reliably found in raw["struct"]["title"]
     struct = raw.get("struct", {})
     result["title"] = struct.get("title")
 
-    # Resolution: in the refine list for X-ray structures
     refine = raw.get("refine", [{}])
     if isinstance(refine, list) and refine:
         result["resolution"] = refine[0].get("ls_d_res_high")
 
-    # Experimental method: in exptl list
     exptl = raw.get("exptl", [{}])
     if isinstance(exptl, list) and exptl:
         result["method"] = exptl[0].get("method")
 
-    # Organism isn't available at the entry level from RCSB REST, so I fall back to the PDB parser's SOURCE records.
+    # organism not available at entry level from rcsb rest, fall back to parser
     result["organism"] = None
 
     return result

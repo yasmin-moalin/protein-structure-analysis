@@ -1,19 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
-"""
-test_routes.py - unit tests for protein_routes.py (Flask layer)
-
-I test the routes layer using Flask's test client, which sends real HTTP
-requests to the app without needing a running server. Every test mocks the
-service layer so tests are fast and independent of network/parsing.
-
-The route layer's job is:
-  1. Input validation (PDB ID format, UniProt format)
-  2. Mapping service exceptions to HTTP status codes
-  3. Wrapping responses in the { data, status } envelope
-
-I test all three responsibilities here for every endpoint.
-"""
+# unit tests for protein_routes.py (flask layer), service layer mocked out
 
 import pytest
 from unittest.mock import patch
@@ -21,13 +8,12 @@ import json
 import sys
 import os
 
-# Add backend directory to path so imports resolve when pytest runs from project root
+# backend directory to path so imports resolve when pytest runs from project root
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
 @pytest.fixture
 def app():
-    """Create a Flask test application."""
     from app import create_app
     application = create_app()
     application.config["TESTING"] = True
@@ -36,13 +22,8 @@ def app():
 
 @pytest.fixture
 def client(app):
-    """Flask test client."""
     return app.test_client()
 
-
-# ---------------------------------------------------------------------------
-# GET /api/protein/<pdb_id>
-# ---------------------------------------------------------------------------
 
 class TestGetProteinEndpoint:
 
@@ -70,7 +51,7 @@ class TestGetProteinEndpoint:
         assert "error" in body
 
     def test_pdb_not_starting_with_digit_returns_400(self, client):
-        # PDB IDs must start with a digit - 'ABCD' should fail format check
+        # pdb ids must start with a digit
         response = client.get("/api/protein/ABCD")
         assert response.status_code == 400
 
@@ -91,15 +72,11 @@ class TestGetProteinEndpoint:
         with patch("routes.protein_routes.get_protein_info", return_value=mock_data):
             response = client.get("/api/protein/4HHB")
         body = json.loads(response.data)
-        # Every successful response must use { data: {...}, status: 200 }
+        # every successful response must use { data: {...}, status: 200 }
         assert "data" in body
         assert "status" in body
         assert body["status"] == 200
 
-
-# ---------------------------------------------------------------------------
-# GET /api/protein/<pdb_id>/structure
-# ---------------------------------------------------------------------------
 
 class TestGetProteinStructureEndpoint:
 
@@ -122,10 +99,6 @@ class TestGetProteinStructureEndpoint:
         assert response.status_code == 404
 
 
-# ---------------------------------------------------------------------------
-# GET /api/alphafold/<uniprot_id>
-# ---------------------------------------------------------------------------
-
 class TestGetAlphaFoldEndpoint:
 
     def test_valid_uniprot_returns_200_with_disclaimer(self, client):
@@ -147,7 +120,7 @@ class TestGetAlphaFoldEndpoint:
         assert body["data"]["is_predicted"] is True
 
     def test_invalid_uniprot_format_returns_400(self, client):
-        # 'XY' is too short to be a valid UniProt accession
+        # 'XY' is too short to be a valid uniprot accession
         response = client.get("/api/alphafold/XY")
         assert response.status_code == 400
 
@@ -157,10 +130,6 @@ class TestGetAlphaFoldEndpoint:
             response = client.get("/api/alphafold/P00001")
         assert response.status_code == 404
 
-
-# ---------------------------------------------------------------------------
-# GET /api/search
-# ---------------------------------------------------------------------------
 
 class TestSearchEndpoint:
 

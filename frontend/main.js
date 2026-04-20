@@ -1,32 +1,18 @@
-﻿/**
- * main.js - ProteinVis frontend, three objects: ProteinAPI (fetch), ViewerManager (NGL 3D), UIController (DOM).
- * I used vanilla JS with no build step - the three-object split gives the same separation of concerns as a framework.
- */
+// three objects: ProteinAPI (fetch), ViewerManager (ngl), UIController (dom)
 
 'use strict';
 
-/* ============================================================
-   ProteinAPI
-   ============================================================ */
+/* ProteinAPI */
 
 class ProteinAPI {
-  /** @param {string} baseUrl - Flask backend URL, e.g. 'http://127.0.0.1:5000' */
   constructor(baseUrl) {
     this.baseUrl = baseUrl.replace(/\/$/, ''); // strip trailing slash
   }
 
-  /**
-   * Fetch metadata and structural analysis for a PDB entry.
-   * @returns {Promise<object>} The data payload from the backend.
-   */
   async fetchProteinInfo(pdbId) {
     return this._get(`/api/protein/${encodeURIComponent(pdbId.toUpperCase())}`);
   }
 
-  /**
-   * Fetch the raw PDB file text for NGL to load.
-   * Returns plain text because NGL expects a string/Blob, not JSON.
-   */
   async fetchProteinStructure(pdbId) {
     const url = `${this.baseUrl}/api/protein/${encodeURIComponent(pdbId.toUpperCase())}/structure`;
     const response = await fetch(url);
@@ -37,16 +23,10 @@ class ProteinAPI {
     return response.text();
   }
 
-  /**
-   * Fetch metadata and structural analysis for an AlphaFold prediction.
-   */
   async fetchAlphaFoldInfo(uniprotId) {
     return this._get(`/api/alphafold/${encodeURIComponent(uniprotId.toUpperCase())}`);
   }
 
-  /**
-   * Fetch the raw AlphaFold PDB file text.
-   */
   async fetchAlphaFoldStructure(uniprotId) {
     const url = `${this.baseUrl}/api/alphafold/${encodeURIComponent(uniprotId.toUpperCase())}/structure`;
     const response = await fetch(url);
@@ -57,17 +37,11 @@ class ProteinAPI {
     return response.text();
   }
 
-  /**
-   * Search RCSB PDB by free text.
-   */
   async searchProteins(query) {
     return this._get(`/api/search?q=${encodeURIComponent(query)}`);
   }
 
-  /**
-   * Shared GET helper - handles the response envelope { data, status }
-   * that all backend endpoints return.
-   */
+  // shared GET helper, unwraps the { data, status } envelope
   async _get(path) {
     const response = await fetch(`${this.baseUrl}${path}`);
     const json = await response.json();
@@ -79,30 +53,24 @@ class ProteinAPI {
 }
 
 
-/* ============================================================
-   ViewerManager
-   ============================================================ */
+/* ViewerManager */
 
 class ViewerManager {
-  /** @param {string} containerId - ID of the div NGL should render into. */
   constructor(containerId) {
     this._containerId = containerId;
     this._stage = null;
-    this._component = null;          // current loaded structure component
-    this._highlightRepr = null;      // temporary highlight for sequence picker
-    this._measureShape = null;       // NGL shape component for distance line
-    this._visibleChains = new Set(); // chains currently visible
-    this._allChains = [];            // all chains in current structure
+    this._component = null;
+    this._highlightRepr = null;
+    this._measureShape = null;
+    this._visibleChains = new Set();
+    this._allChains = [];
 
-    // Current rendering state - maintained so re-applying is idempotent
     this._currentRepr = 'cartoon';
     this._currentColor = 'chainid';
 
-    // Measurement state
     this._measureMode = false;
     this._measureAtom1 = null;
 
-    // Mouse position for tooltip placement (tracked via mousemove)
     this._mouseX = 0;
     this._mouseY = 0;
 
@@ -110,15 +78,13 @@ class ViewerManager {
   }
 
   _initStage() {
-    // NGL Stage - I disable the built-in tooltip because I want a custom-styled
-    // one that matches the dark theme and shows more information.
+    // disable ngl's built-in tooltip so we can show our own styled one
     this._stage = new NGL.Stage(this._containerId, {
       backgroundColor: '#070b14',
       tooltip: false,
-      quality: 'medium', // balance between detail and performance
+      quality: 'medium',
     });
 
-    // Track mouse position for tooltip placement
     const container = document.getElementById(this._containerId);
     container.addEventListener('mousemove', (e) => {
       const rect = container.getBoundingClientRect();
@@ -126,7 +92,6 @@ class ViewerManager {
       this._mouseY = e.clientY - rect.top;
     });
 
-    // Hover signal - show atom info tooltip
     this._stage.signals.hovered.add((proxy) => {
       if (proxy && proxy.atom) {
         this._emit('atomHovered', { atom: proxy.atom, x: this._mouseX, y: this._mouseY });
@@ -135,38 +100,27 @@ class ViewerManager {
       }
     });
 
-    // Click signal - used for measure mode and residue selection
     this._stage.signals.clicked.add((proxy) => {
       if (proxy && proxy.atom) {
         this._handleAtomClick(proxy.atom);
       } else if (this._measureMode) {
-        // Clicked empty space during measure - provide feedback
         this._emit('measureStatus', 'Click directly on an atom in the structure.');
       }
     });
 
-    // Handle container resize - NGL doesn't auto-resize in some setups
     const resizeObserver = new ResizeObserver(() => {
       if (this._stage) this._stage.handleResize();
     });
     resizeObserver.observe(container);
 
-    // I intercept wheel events at the container level so two-finger scroll always reaches NGL instead of scrolling the page.
+    // intercept wheel so two-finger scroll reaches ngl instead of scrolling the page
     container.addEventListener('wheel', (e) => {
       e.preventDefault();
     }, { passive: false });
   }
 
-  /**
-   * Load a PDB text string into the viewer.
-   * Replaces any currently loaded structure.
-   *
-   * @param {string} pdbText  - Raw PDB file content
-   * @param {string} name     - Identifier used in NGL internals (PDB ID or UniProt)
-   * @param {string[]} chainIds - Chain IDs for visibility state initialisation
-   */
   async loadStructure(pdbText, name, chainIds) {
-    // Clear the previous structure first to free WebGL memory before loading a new one.
+    // clear previous structure to free webgl memory
     if (this._component) {
       this._stage.removeAllComponents();
       this._component = null;
@@ -176,7 +130,7 @@ class ViewerManager {
 
     const blob = new Blob([pdbText], { type: 'text/plain' });
 
-    // The 'ext' option is needed because NGL can't infer format from a blob with no filename.
+    // ext needed because ngl can't infer format from a blob with no filename
     this._component = await this._stage.loadFile(blob, {
       ext: 'pdb',
       defaultRepresentation: false,
@@ -190,25 +144,16 @@ class ViewerManager {
     this._component.autoView();
   }
 
-  /**
-   * Set the representation type (cartoon, surface, ball+stick, etc.).
-   * Re-applies current colour scheme automatically.
-   */
   setRepresentation(reprType) {
     this._currentRepr = reprType;
     this._applyRepresentation();
   }
 
-  /** Set the colour scheme. I added a "colorblind" option (blue/orange palette) since NGL has no built-in accessible scheme. */
   setColorScheme(scheme) {
     this._currentColor = scheme;
     this._applyRepresentation();
   }
 
-  /**
-   * Set chain visibility. Rebuilds the NGL selection string from the
-   * set of visible chains and re-applies the representation.
-   */
   setChainVisibility(chainId, visible) {
     if (visible) {
       this._visibleChains.add(chainId);
@@ -218,19 +163,12 @@ class ViewerManager {
     this._applyRepresentation();
   }
 
-  /**
-   * Set the viewport background colour.
-   */
   setBackground(color) {
     if (this._stage) {
       this._stage.setParameters({ backgroundColor: color });
     }
   }
 
-  /**
-   * Toggle auto-rotation. Uses NGL's setSpin API if available,
-   * which internally uses requestAnimationFrame.
-   */
   toggleSpin(enabled) {
     if (!this._stage) return;
     try {
@@ -240,12 +178,10 @@ class ViewerManager {
         this._stage.setSpin(false);
       }
     } catch (e) {
-      // setSpin not available in this NGL build - no-op gracefully
       console.warn('NGL setSpin not available:', e.message);
     }
   }
 
-  /** Capture a 2× resolution screenshot and trigger a browser download. */
   async screenshot(filename) {
     if (!this._stage) return;
     try {
@@ -263,17 +199,13 @@ class ViewerManager {
     }
   }
 
-  /**
-   * Zoom by dispatching a WheelEvent on the NGL canvas - I added these buttons because touchpad users had trouble zooming.
-   * @param {number} direction  +1 to zoom in, -1 to zoom out
-   */
+  // dispatch wheel event on canvas so the zoom buttons work for touchpad users
   zoom(direction) {
     if (!this._stage) return;
     const container = document.getElementById(this._containerId);
     const canvas = container?.querySelector('canvas');
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    // deltaY: negative = zoom in, positive = zoom out (same as browser wheel)
     canvas.dispatchEvent(new WheelEvent('wheel', {
       deltaY: direction * -120,
       clientX: rect.left + rect.width / 2,
@@ -283,28 +215,21 @@ class ViewerManager {
     }));
   }
 
-  /**
-   * Animate the camera to fit the current structure in the viewport.
-   */
   centre() {
     if (this._component) {
-      this._component.autoView(500); // 500ms animation
+      this._component.autoView(500);
     }
   }
 
-  /** Enter distance measurement mode - the next two atom clicks will calculate the distance between them. */
   startMeasure() {
     this._measureMode = true;
     this._measureAtom1 = null;
-    // Crosshair cursor tells the user they're in a special click mode, not the usual rotate mode.
+    // crosshair tells the user they're in a special click mode
     const container = document.getElementById(this._containerId);
     if (container) container.style.cursor = 'crosshair';
     this._emit('measureStatus', 'Click the first atom…');
   }
 
-  /**
-   * Exit measurement mode and remove any measurement shape from the viewport.
-   */
   clearMeasure() {
     this._measureMode = false;
     this._measureAtom1 = null;
@@ -312,40 +237,29 @@ class ViewerManager {
       this._stage.removeComponent(this._measureShape);
       this._measureShape = null;
     }
-    // Restore default cursor
     const container = document.getElementById(this._containerId);
     if (container) container.style.cursor = '';
     this._emit('measureCleared', null);
   }
 
-  /**
-   * Highlight a residue in the 3D view - used by the sequence viewer when you click a letter.
-   * @param {string} chainId - Chain identifier
-   * @param {number} resno   - Residue sequence number
-   */
   highlightResidue(chainId, resno) {
     if (!this._component) return;
 
-    // Remove previous highlight representation
     if (this._highlightRepr) {
       this._component.removeRepresentation(this._highlightRepr);
       this._highlightRepr = null;
     }
 
-    // Add a ball+stick overlay for just this residue - NGL selection syntax
-    // is '{resno}:{chainId}' for a specific residue in a specific chain.
+    // ngl selection syntax: '{resno}:{chainId}'
     const sele = `${resno}:${chainId}`;
     this._highlightRepr = this._component.addRepresentation('ball+stick', {
       sele,
-      colorValue: '#ffd700', // gold highlight
+      colorValue: '#ffd700',
       radius: 0.25,
       opacity: 1,
     });
   }
 
-  /**
-   * Clear the residue highlight from the 3D view.
-   */
   clearHighlight() {
     if (this._highlightRepr && this._component) {
       this._component.removeRepresentation(this._highlightRepr);
@@ -353,27 +267,16 @@ class ViewerManager {
     }
   }
 
-  /**
-   * Animate the camera to a specific residue so the user doesn't have to hunt for it after clicking in the sequence panel.
-   * @param {string} chainId - Chain identifier (e.g. 'A')
-   * @param {number} resno   - Residue sequence number
-   */
   zoomToResidue(chainId, resno) {
     if (!this._component) return;
     const sele = `${resno}:${chainId}`;
     try {
-      // NGL autoView accepts a selection string to focus on specific atoms - 500ms keeps the animation natural.
       this._component.autoView(sele, 500);
     } catch (e) {
-      // Fall back to centring the whole structure if selection-based zoom isn't available in this NGL build.
       this._component.autoView(500);
     }
   }
 
-  /**
-   * Make one chain the only visible chain - faster than unchecking the others one by one for multi-subunit proteins.
-   * @param {string} chainId - Chain to isolate, or null to show all
-   */
   isolateChain(chainId) {
     if (chainId === null) {
       this._visibleChains = new Set(this._allChains);
@@ -383,7 +286,6 @@ class ViewerManager {
     this._applyRepresentation();
   }
 
-  /** Remove all components from the stage so the user can start over without a page refresh. */
   clearAll() {
     if (this._stage) {
       this._stage.removeAllComponents();
@@ -401,13 +303,10 @@ class ViewerManager {
     return this._component !== null;
   }
 
-  // ---- Private methods ----
-
-  /** Rebuild the NGL representation from current state - I remove and re-add rather than mutating because it's more reliable across NGL versions. */
+  // remove and re-add representations rather than mutating - more reliable across ngl versions
   _applyRepresentation() {
     if (!this._component) return;
 
-    // Remove existing representations (but not the highlight)
     const reprs = this._component.reprList.slice();
     reprs.forEach((r) => {
       if (r !== this._highlightRepr) {
@@ -415,8 +314,7 @@ class ViewerManager {
       }
     });
 
-    // Build NGL selection string from visible chains.
-    // If all chains are visible, '*' is more efficient than a long OR expression.
+    // '*' is more efficient than a long OR expression when all chains are visible
     let sele = '*';
     if (this._visibleChains.size > 0 && this._visibleChains.size < this._allChains.length) {
       sele = [...this._visibleChains].map((c) => `:${c}`).join(' or ');
@@ -425,7 +323,7 @@ class ViewerManager {
     }
 
     if (this._currentColor === 'colorblind') {
-      // Blue/orange palette safe for deuteranopia and protanopia - applied per chain via selection strings.
+      // blue/orange palette safe for deuteranopia and protanopia
       const cbPalette = ['#0072B2', '#E69F00', '#56B4E9', '#D55E00', '#009E73', '#F0E442'];
       const chains = this._allChains.length ? this._allChains : [''];
       chains.forEach((chainId, colourIdx) => {
@@ -446,18 +344,13 @@ class ViewerManager {
     }
   }
 
-  /**
-   * Handle a click on an atom - either for measurement or general picking info.
-   */
   _handleAtomClick(atom) {
     if (this._measureMode) {
       this._handleMeasureClick(atom);
     }
-    // Always emit so UIController can update the tooltip / highlight display
     this._emit('atomClicked', { atom });
   }
 
-  /** Two-click distance measurement - first click picks atom 1, second calculates the distance and draws a line. */
   _handleMeasureClick(atom) {
     if (!this._measureAtom1) {
       this._measureAtom1 = atom;
@@ -468,13 +361,13 @@ class ViewerManager {
     const a1 = this._measureAtom1;
     const a2 = atom;
 
-    // Euclidean distance in Ångströms (PDB coordinates are in Å)
+    // euclidean distance in angstroms
     const dx = a2.x - a1.x;
     const dy = a2.y - a1.y;
     const dz = a2.z - a1.z;
     const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-    // Draw a cylinder between the two atoms - NGL lines render at fixed 1px regardless of depth, cylinders scale correctly.
+    // cylinders scale with depth, lines render at fixed 1px regardless
     if (this._measureShape) {
       this._stage.removeComponent(this._measureShape);
     }
@@ -483,8 +376,8 @@ class ViewerManager {
     shape.addCylinder(
       [a1.x, a1.y, a1.z],
       [a2.x, a2.y, a2.z],
-      [1, 0.8, 0],   // orange-ish colour (RGB 0–1)
-      0.1            // radius in Å - thin enough to not obscure the structure
+      [1, 0.8, 0],
+      0.1
     );
     shape.addSphere([a1.x, a1.y, a1.z], [1, 0.8, 0], 0.25);
     shape.addSphere([a2.x, a2.y, a2.z], [1, 0.8, 0], 0.25);
@@ -492,7 +385,6 @@ class ViewerManager {
     this._measureShape = this._stage.addComponentFromObject(shape);
     this._measureShape.addRepresentation('buffer');
 
-    // Exit measure mode and report result
     this._measureMode = false;
     this._measureAtom1 = null;
     this._emit('measureComplete', {
@@ -502,35 +394,27 @@ class ViewerManager {
     });
   }
 
-  /** Emit a custom event on document so ViewerManager and UIController stay decoupled. */
+  // emit on document so ViewerManager and UIController stay decoupled
   _emit(eventName, detail) {
     document.dispatchEvent(new CustomEvent(`pv:${eventName}`, { detail }));
   }
 }
 
 
-/* ============================================================
-   UIController
-   ============================================================ */
+/* UIController */
 
 class UIController {
-  /**
-   * @param {ProteinAPI}    api    - Network layer
-   * @param {ViewerManager} viewer - 3D rendering layer
-   */
   constructor(api, viewer) {
     this.api = api;
     this.viewer = viewer;
-    this._currentMetadata = null;  // stored for JSON export
-    this._sequenceData = {};        // per-chain sequence + SS data from last load
-    this._selectedResSpan = null;   // currently highlighted residue span in DOM
-    this._viewer2 = null;           // second ViewerManager for comparison mode
-    this._compareActive = false;    // whether split-screen comparison is on
+    this._currentMetadata = null;
+    this._sequenceData = {};
+    this._selectedResSpan = null;
+    this._viewer2 = null;
+    this._compareActive = false;
   }
 
-  /** Wire all event listeners once on load - I keep them here rather than inline in the HTML so the HTML stays clean. */
   init() {
-    // Load PDB
     this._el('load-pdb-btn').addEventListener('click', () => {
       this._loadPDB(this._el('pdb-input').value);
     });
@@ -538,7 +422,6 @@ class UIController {
       if (e.key === 'Enter') this._loadPDB(this._el('pdb-input').value);
     });
 
-    // Load AlphaFold
     this._el('load-af-btn').addEventListener('click', () => {
       this._loadAlphaFold(this._el('af-input').value);
     });
@@ -546,41 +429,35 @@ class UIController {
       if (e.key === 'Enter') this._loadAlphaFold(this._el('af-input').value);
     });
 
-    // PDB ID auto-uppercase + remove pulse animation once the user starts typing
     this._el('pdb-input').addEventListener('input', (e) => {
       const pos = e.target.selectionStart;
       e.target.value = e.target.value.toUpperCase();
       e.target.setSelectionRange(pos, pos);
-      e.target.classList.remove('input--pulse'); // stop pulsing once engaged
+      e.target.classList.remove('input--pulse');
     });
 
-    // Search - button / Enter still works for explicit search
     this._el('search-btn').addEventListener('click', () => {
       this._search(this._el('search-input').value);
     });
     this._el('search-input').addEventListener('keydown', (e) => {
       if (e.key === 'Enter') this._search(this._el('search-input').value);
-      // Arrow keys navigate the typeahead list
       if (e.key === 'ArrowDown') {
         const first = this._el('typeahead-list')?.querySelector('[role="option"]');
         if (first) { e.preventDefault(); first.focus(); }
       }
     });
 
-    // Live typeahead suggestions (debounced 300ms) so users can search by name without knowing the PDB ID.
+    // live typeahead, debounced 300ms
     this._initTypeahead();
 
-    // Quick-load buttons (in controls panel)
     document.querySelectorAll('.btn--quick[data-pdb]').forEach((btn) => {
       btn.addEventListener('click', () => this._loadPDB(btn.dataset.pdb));
     });
 
-    // Empty state CTA buttons
     document.querySelectorAll('.btn--outline-mono[data-pdb]').forEach((btn) => {
       btn.addEventListener('click', () => this._loadPDB(btn.dataset.pdb));
     });
 
-    // Representation select - I also update the description below it so users understand what each view reveals scientifically.
     const reprSelect = this._el('representation-select');
     const reprTip = this._el('repr-description');
     const _updateReprTip = () => {
@@ -591,19 +468,16 @@ class UIController {
       this.viewer.setRepresentation(e.target.value);
       _updateReprTip();
     });
-    _updateReprTip(); // set initial tooltip text
+    _updateReprTip();
 
-    // Colour scheme select
     this._el('colour-select').addEventListener('change', (e) => {
       this.viewer.setColorScheme(e.target.value);
     });
 
-    // Background colour
     this._el('bg-select').addEventListener('change', (e) => {
       this.viewer.setBackground(e.target.value);
     });
 
-    // View control buttons
     this._el('centre-btn').addEventListener('click', () => this.viewer.centre());
 
     this._el('spin-btn').addEventListener('click', () => {
@@ -618,7 +492,6 @@ class UIController {
       this.viewer.screenshot(`${id}_screenshot.png`);
     });
 
-    // Comparison mode toggle
     this._el('compare-toggle-btn').addEventListener('click', () => {
       this._toggleCompareMode();
     });
@@ -629,7 +502,6 @@ class UIController {
       if (e.key === 'Enter') this._loadCompare(this._el('compare-pdb-input').value);
     });
 
-    // Measurement
     this._el('measure-btn').addEventListener('click', () => {
       const btn = this._el('measure-btn');
       const active = btn.getAttribute('aria-pressed') === 'true';
@@ -650,36 +522,29 @@ class UIController {
       this._exitMeasureMode();
     });
 
-    // Error dismiss
     this._el('error-close-btn').addEventListener('click', () => this._hideError());
 
-    // Sequence chain selector
     this._el('sequence-chain-select').addEventListener('change', (e) => {
       this._renderSequenceChain(e.target.value);
     });
 
-    // Sequence panel collapse
     this._el('seq-collapse-btn').addEventListener('click', () => {
       const panel = this._el('sequence-panel');
       const btn = this._el('seq-collapse-btn');
       const expanded = btn.getAttribute('aria-expanded') === 'true';
       btn.setAttribute('aria-expanded', String(!expanded));
       panel.classList.toggle('collapsed', expanded);
-      // Rotate the chevron icon via CSS class
       btn.classList.toggle('rotated', expanded);
     });
 
-    // Export metadata
     this._el('export-btn').addEventListener('click', () => this._exportMetadata());
 
-    // ViewerManager events (emitted on document)
     document.addEventListener('pv:atomHovered', (e) => this._onAtomHovered(e.detail));
     document.addEventListener('pv:atomClicked', (e) => this._onAtomClicked(e.detail));
     document.addEventListener('pv:measureStatus', (e) => {
       const el = this._el('measure-status');
       el.textContent = e.detail;
       el.hidden = false;
-      // Advance to step 2 when atom 1 has been picked
       if (e.detail && e.detail.includes('now click second')) {
         this._setMeasureStep(2);
       }
@@ -690,28 +555,22 @@ class UIController {
       this._el('measure-status').hidden = true;
     });
 
-    // Render any search history that was saved in a previous session
     this._renderHistoryChips();
 
-    // Zoom buttons - for touchpad users who find scroll-wheel zoom unintuitive
     this._el('zoom-in-btn').addEventListener('click',  () => this.viewer.zoom(1));
     this._el('zoom-out-btn').addEventListener('click', () => this.viewer.zoom(-1));
 
-    // Clear viewer - resets everything to empty state
     this._el('clear-viewer-btn').addEventListener('click', () => this._clearViewer());
 
-    // Tour replay - calls _showTour() not _setupTour() because listeners are already wired; calling setup again would add duplicates.
+    // calling _showTour not _setupTour here avoids duplicate listeners on replay
     this._el('replay-tour-btn').addEventListener('click', () => {
       localStorage.removeItem('pv_tour_done');
       this._showTour();
     });
 
-    // Help popovers - wire every ? button to show a shared popover
     this._initHelpPopovers();
 
-    // Keyboard shortcuts (only active when a structure is loaded):
-    //   C - centre view    M - toggle measure mode
-    //   S - screenshot     Escape - dismiss error
+    // keyboard shortcuts: C centre, M measure, S screenshot, Esc dismiss error
     document.addEventListener('keydown', (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
@@ -725,12 +584,11 @@ class UIController {
       }
     });
 
-    // Onboarding tour - set up listeners once, then show if first visit
     this._setupTour();
     if (!localStorage.getItem('pv_tour_done')) this._showTour();
   }
 
-  // ---- Load flows ----
+  // ---- load flows ----
 
   async _loadPDB(rawId) {
     const pdbId = rawId?.trim().toUpperCase();
@@ -744,7 +602,7 @@ class UIController {
     this._hideEmpty();
 
     try {
-      // Fetch metadata and structure in parallel - independent requests so this roughly halves the load time.
+      // fetch metadata and structure in parallel - roughly halves load time
       const [info, pdbText] = await Promise.all([
         this.api.fetchProteinInfo(pdbId),
         this.api.fetchProteinStructure(pdbId),
@@ -759,9 +617,7 @@ class UIController {
       this._updateChainToggles(info.chains || []);
       this._updateSequenceViewer(info.sequence || {});
 
-      // Save to history so returning users don't have to re-type identifiers.
       this._saveToHistory(pdbId, info.title);
-      // Remove the pulse hint from the input once a structure has been loaded
       this._el('pdb-input').classList.remove('input--pulse');
 
       this._el('af-disclaimer').hidden = true;
@@ -769,8 +625,6 @@ class UIController {
       this._hideLoading();
     } catch (err) {
       this._hideLoading();
-      // If nothing was previously loaded, restore the empty state so the
-      // viewport doesn't just show a blank canvas behind the error card.
       if (!this._currentMetadata) this._el('empty-state').hidden = false;
       this._showError(err.message || 'Failed to load structure. Please check the PDB ID and try again.');
     }
@@ -805,7 +659,7 @@ class UIController {
       this._saveToHistory(`AF:${uniprotId}`, info.title);
       this._el('clear-viewer-btn').hidden = false;
 
-      // Show the AlphaFold disclaimer - it's important to make clear this is a prediction, not an experimental structure.
+      // show alphafold disclaimer - it's a prediction not experimental
       this._el('af-disclaimer').hidden = false;
       this._hideLoading();
     } catch (err) {
@@ -819,7 +673,7 @@ class UIController {
     query = query?.trim().toUpperCase();
     if (!query || query.length < 2) return;
 
-    // If the user typed a valid PDB ID directly, just load it without hitting the search API.
+    // if it looks like a pdb id just load it directly
     if (/^[0-9][A-Z0-9]{3}$/.test(query)) {
       this._el('pdb-input').value = query;
       this._loadPDB(query);
@@ -839,7 +693,6 @@ class UIController {
         return;
       }
 
-      // Show the title alongside the PDB ID, truncated to keep the list compact.
       resultsEl.innerHTML = results.map((r) => {
         const title = r.title
           ? r.title.charAt(0).toUpperCase() + r.title.slice(1).toLowerCase()
@@ -855,7 +708,6 @@ class UIController {
         `;
       }).join('');
 
-      // Wire up click and keyboard activation on each result
       resultsEl.querySelectorAll('.search-result-item').forEach((item) => {
         const activate = () => {
           this._el('pdb-input').value = item.dataset.pdb;
@@ -872,7 +724,7 @@ class UIController {
     }
   }
 
-  // ---- Metadata UI ----
+  // ---- metadata ui ----
 
   _updateMetadata(info) {
     const show = (id, val) => {
@@ -880,7 +732,6 @@ class UIController {
       if (el) el.textContent = val ?? '-';
     };
 
-    // Source badge
     const badge = this._el('source-badge');
     if (info.is_predicted) {
       badge.textContent = 'AlphaFold Database (EBI)';
@@ -890,14 +741,13 @@ class UIController {
       badge.className = 'source-badge source-badge--pdb';
     }
 
-    // Show the disclaimer in the metadata panel for predicted structures - in context, not just as a banner.
     this._el('meta-af-disclaimer').hidden = !info.is_predicted;
 
     show('meta-title', info.title);
     show('meta-organism', info.organism);
     show('meta-method', info.method);
-    // For AlphaFold structures show mean pLDDT instead of resolution
-    // (resolution isn't meaningful for predicted structures).
+
+    // alphafold: show mean plddt instead of resolution
     const resLabel = this._el('meta-resolution-label');
     if (info.is_predicted && info.mean_plddt != null) {
       if (resLabel) resLabel.textContent = 'Mean pLDDT';
@@ -912,7 +762,6 @@ class UIController {
     show('meta-residues', totalResidues ? totalResidues.toLocaleString() : '-');
     show('meta-chains', info.chain_ids?.join(', ') || '-');
 
-    // Show ligand count and names if present; hide the row entirely for plain proteins with no cofactors.
     const ligands = info.ligands;
     const ligandItem = this._el('meta-ligand-item');
     if (ligands && ligands.count > 0) {
@@ -923,7 +772,6 @@ class UIController {
       if (ligandItem) ligandItem.hidden = true;
     }
 
-    // Gene name - only available for AlphaFold structures via the EBI API.
     const geneItem = this._el('meta-gene-item');
     if (info.gene && geneItem) {
       show('meta-gene', info.gene);
@@ -932,7 +780,6 @@ class UIController {
       geneItem.hidden = true;
     }
 
-    // Authors
     const authorsEl = this._el('meta-authors');
     if (info.authors?.length) {
       authorsEl.textContent = info.authors.join(', ');
@@ -941,14 +788,11 @@ class UIController {
       this._el('authors-section').hidden = true;
     }
 
-    // Secondary structure breakdown
     const ss = info.secondary_structure || {};
     this._updateSSBar(ss);
 
-    // Chain detail list
     this._updateChainDetailList(info.chains || []);
 
-    // External links
     const rcsbLink = this._el('rcsb-link');
     const afLink = this._el('af-link');
     if (info.rcsb_url) {
@@ -964,14 +808,11 @@ class UIController {
       afLink.hidden = true;
     }
 
-    // Show metadata panel
     this._el('metadata-placeholder').hidden = true;
     this._el('metadata-content').hidden = false;
 
-    // Run the lightweight data accuracy verification and show indicator
     this._checkDataAccuracy(info);
 
-    // Clear any residue info from a previous load
     this._el('residue-info-section').hidden = true;
   }
 
@@ -988,8 +829,6 @@ class UIController {
     this._el('ss-sheet-pct').textContent = `${sheet}%`;
     this._el('ss-loop-pct').textContent  = `${loop}%`;
 
-    // Show raw counts if available - lets users cross-check parsed HELIX/SHEET
-    // records against the counts shown on RCSB's own entry page.
     const hEl = this._el('ss-helix-count');
     const sEl = this._el('ss-sheet-count');
     const lEl = this._el('ss-loop-count');
@@ -1010,7 +849,7 @@ class UIController {
     `).join('');
   }
 
-  // ---- Chain toggles ----
+  // ---- chain toggles ----
 
   _updateChainToggles(chains) {
     const container = this._el('chain-toggles');
@@ -1021,7 +860,6 @@ class UIController {
       return;
     }
 
-    // I added Isolate buttons so users can focus on one chain of a multi-subunit protein with one click instead of unchecking the others.
     container.innerHTML = chains.map((c) => `
       <div class="chain-toggle-row">
         <label class="chain-toggle">
@@ -1035,7 +873,6 @@ class UIController {
       </div>
     `).join('');
 
-    // Add a "Show all" button if there are multiple chains
     if (chains.length > 1) {
       container.insertAdjacentHTML('beforeend', `
         <button class="btn btn--ghost btn--sm" id="show-all-chains-btn"
@@ -1059,7 +896,7 @@ class UIController {
       btn.addEventListener('click', () => {
         const chainId = btn.dataset.isolateChain;
         this.viewer.isolateChain(chainId);
-        // Sync checkboxes - the isolate action makes one visible, all others hidden
+        // sync checkboxes after isolate
         container.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
           cb.checked = cb.dataset.chain === chainId;
         });
@@ -1069,7 +906,7 @@ class UIController {
     section.hidden = false;
   }
 
-  // ---- Sequence viewer ----
+  // ---- sequence viewer ----
 
   _updateSequenceViewer(sequence) {
     const panel = this._el('sequence-panel');
@@ -1081,14 +918,13 @@ class UIController {
       return;
     }
 
-    // Populate chain selector dropdown
     chainSelect.innerHTML = chainIds.map((id) => `<option value="${id}">Chain ${id}</option>`).join('');
 
     this._renderSequenceChain(chainIds[0]);
     panel.hidden = false;
   }
 
-  /** Render the sequence as clickable spans coloured by secondary structure (helix/sheet/loop), so you can see the link between sequence and 3D shape. */
+  // each letter is a clickable span coloured by secondary structure
   _renderSequenceChain(chainId) {
     const display = this._el('sequence-display');
     const chainData = this._sequenceData[chainId];
@@ -1110,17 +946,14 @@ class UIController {
 
     display.innerHTML = spans;
 
-    // Wire click and keyboard activation on each residue span
     display.querySelectorAll('.res').forEach((span) => {
       const activate = () => {
-        // Remove selection highlight from previous span
         if (this._selectedResSpan) this._selectedResSpan.classList.remove('res--selected');
         span.classList.add('res--selected');
         this._selectedResSpan = span;
         const resno = parseInt(span.dataset.resno, 10);
         this.viewer.highlightResidue(span.dataset.chain, resno);
         this.viewer.zoomToResidue(span.dataset.chain, resno);
-        // Also populate the residue info panel (same as clicking in the 3D viewer)
         this._showResidueInfo(span.dataset.chain, resno, null);
       };
       span.addEventListener('click', activate);
@@ -1130,7 +963,7 @@ class UIController {
     });
   }
 
-  // ---- Atom picking events ----
+  // ---- atom picking ----
 
   _onAtomHovered(detail) {
     const tooltip = this._el('atom-tooltip');
@@ -1140,7 +973,6 @@ class UIController {
     }
     const { atom, x, y } = detail;
     tooltip.textContent = `${atom.resname} ${atom.resno} · Chain ${atom.chainname} · ${atom.atomname}`;
-    // Position the tooltip near the cursor, nudged so it doesn't overlap the pointer
     const container = this._el('viewport');
     const cw = container.clientWidth;
     const tx = (x + 16 + 200 > cw) ? x - 210 : x + 16;
@@ -1149,7 +981,6 @@ class UIController {
     tooltip.hidden = false;
   }
 
-  /** Handle an atom click from the 3D viewport - syncs the sequence panel and shows residue info. */
   _onAtomClicked(detail) {
     if (!detail?.atom || this.viewer._measureMode) return;
 
@@ -1157,42 +988,30 @@ class UIController {
     const chainId = atom.chainname || atom.chain;
     const resno = atom.resno;
 
-    // Populate the residue info panel in the metadata column
     this._showResidueInfo(chainId, resno, atom);
 
-    // Sync the sequence chain selector and highlight the corresponding span
     const chainSelect = this._el('sequence-chain-select');
     if (chainSelect && chainSelect.value !== chainId) {
       chainSelect.value = chainId;
       this._renderSequenceChain(chainId);
     }
 
-    // Find and highlight the span for this residue number in the sequence display
     const display = this._el('sequence-display');
     const targetSpan = display?.querySelector(`[data-chain="${chainId}"][data-resno="${resno}"]`);
     if (targetSpan) {
       if (this._selectedResSpan) this._selectedResSpan.classList.remove('res--selected');
       targetSpan.classList.add('res--selected');
       this._selectedResSpan = targetSpan;
-      // Scroll the sequence display so the selected residue is visible
       targetSpan.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
     }
 
-    // Also highlight the clicked residue in gold in the 3D view
     this.viewer.highlightResidue(chainId, resno);
   }
 
-  /**
-   * Populate the residue info panel for a given chain/residue.
-   * @param {string} chainId  - Chain identifier
-   * @param {number} resno    - Residue sequence number
-   * @param {object|null} atom - NGL atom proxy, null when called from the sequence panel
-   */
   _showResidueInfo(chainId, resno, atom) {
     const section = this._el('residue-info-section');
     const isPredicted = this._currentMetadata?.is_predicted;
 
-    // Find the residue record from the sequence data we already have
     const chainData = this._sequenceData[chainId];
     const resRecord = chainData?.residues?.find(r => r.seq_num === resno);
 
@@ -1207,7 +1026,7 @@ class UIController {
     this._el('ri-chain').textContent = chainId;
     this._el('ri-ss').textContent = ssLabel;
 
-    // Show pLDDT block only for AlphaFold structures, where B-factor = pLDDT
+    // b-factor = plddt for alphafold structures
     const plddt = this._el('ri-plddt-block');
     if (isPredicted && bfactor != null) {
       this._el('ri-plddt').textContent = bfactor;
@@ -1238,7 +1057,6 @@ class UIController {
     resultEl.hidden = false;
     this._el('measure-btn').setAttribute('aria-pressed', 'false');
     this._el('measure-status').hidden = true;
-    // Advance to step 3 (complete) and remove the ring
     this._setMeasureStep(3);
     this._el('measure-ring').hidden = true;
   }
@@ -1262,12 +1080,11 @@ class UIController {
     this._el('measure-ring').hidden = true;
   }
 
-  // ---- Export ----
+  // ---- export ----
 
   _exportMetadata() {
     if (!this._currentMetadata) return;
 
-    // Build a clean export object without the raw sequence data - the structural metadata is what you'd actually cite.
     const exportData = {
       source: this._currentMetadata.source,
       identifier: this._currentMetadata.pdb_id || this._currentMetadata.uniprot_id,
@@ -1299,9 +1116,8 @@ class UIController {
     URL.revokeObjectURL(url);
   }
 
-  // ---- Typeahead search ----
+  // ---- typeahead ----
 
-  /** Wire live typeahead search - debounced at 300ms so it fires after the user pauses, not on every keystroke. Users can search by name without knowing any PDB IDs. */
   _initTypeahead() {
     const input   = this._el('search-input');
     const list    = this._el('typeahead-list');
@@ -1375,7 +1191,6 @@ class UIController {
       const query = input.value.trim();
       clearTimeout(debounceTimer);
 
-      // If input looks like a PDB ID (4 chars starting with digit), load directly
       if (/^[0-9][A-Z0-9]{3}$/i.test(query)) {
         hideList();
         return;
@@ -1385,7 +1200,6 @@ class UIController {
       if (query === lastQuery) return;
       lastQuery = query;
 
-      // Show a "Searching…" placeholder immediately so the user gets feedback
       list.innerHTML = `<li class="typeahead-empty" role="option" aria-selected="false">Searching…</li>`;
       list.hidden = false;
       wrapper?.setAttribute('aria-expanded', 'true');
@@ -1401,7 +1215,6 @@ class UIController {
       }, 300);
     });
 
-    // Close on click outside or Escape
     document.addEventListener('click', (e) => {
       if (!wrapper?.contains(e.target)) hideList();
     });
@@ -1410,9 +1223,9 @@ class UIController {
     });
   }
 
-  // ---- Onboarding tour ----
+  // ---- onboarding tour ----
 
-  /** Set up tour button listeners once - kept separate from _showTour so replaying never adds duplicate handlers. */
+  // set up listeners once - separate from _showTour so replay doesn't add duplicate handlers
   _setupTour() {
     this._tourSteps = [
       {
@@ -1457,7 +1270,6 @@ class UIController {
     this._el('tour-skip-btn').addEventListener('click', close);
   }
 
-  /** Reset step to 0, render, and show the overlay. */
   _showTour() {
     this._tourStep = 0;
     this._renderTour();
@@ -1480,9 +1292,9 @@ class UIController {
     );
   }
 
-  // ---- Help popovers ----
+  // ---- help popovers ----
 
-  /** Wire all help buttons to a single shared popover - only one is ever visible at a time so one is enough. */
+  // one shared popover repositioned when any ? button is clicked
   _initHelpPopovers() {
     const popover   = this._el('help-popover');
     const popText   = this._el('help-popover-text');
@@ -1490,10 +1302,8 @@ class UIController {
 
     const show = (btn) => {
       popText.textContent = btn.dataset.help || '';
-      // Position the popover below the button
       const rect = btn.getBoundingClientRect();
       popover.style.top  = `${rect.bottom + window.scrollY + 6}px`;
-      // Keep it from overflowing the right edge
       const left = Math.min(rect.left, window.innerWidth - 280);
       popover.style.left = `${Math.max(8, left)}px`;
       popover.hidden = false;
@@ -1518,16 +1328,15 @@ class UIController {
       popover._source = null;
     });
 
-    // Close popover when clicking anywhere else
     document.addEventListener('click', () => {
       popover.hidden = true;
       popover._source = null;
     });
   }
 
-  // ---- Data accuracy verification ----
+  // ---- data accuracy check ----
 
-  /** Cross-check the displayed residue and chain counts against the parsed values, showing a "Data verified ✓" or warning - proves what's rendered matches what was parsed. */
+  // cross-checks residue and chain counts to confirm what's displayed matches what was parsed
   _checkDataAccuracy(info) {
     const el = this._el('data-verified');
     if (!el) return;
@@ -1537,7 +1346,6 @@ class UIController {
     const chainCountFromList = (info.chains || []).length;
     const chainCountFromIds = (info.chain_ids || []).length;
 
-    // Sum of per-chain residue counts should equal total_residues from SS breakdown
     const sumChainResidues = (info.chains || []).reduce((acc, c) => acc + (c.residue_count || 0), 0);
 
     const residuesMatch = parsedResidues == null || sumChainResidues === parsedResidues;
@@ -1559,20 +1367,18 @@ class UIController {
     el.hidden = false;
   }
 
-  // ---- Search history ----
+  // ---- search history ----
 
-  /** Save a loaded structure to localStorage history (max 5 entries) - I use localStorage so it persists across sessions. */
   _saveToHistory(id, title) {
     try {
       const history = this._loadHistory();
-      // Deduplicate: remove any existing entry for this id first
       const filtered = history.filter(h => h.id !== id);
       filtered.unshift({ id, title: title || id, ts: Date.now() });
       const trimmed = filtered.slice(0, 5);
       localStorage.setItem('pv_history', JSON.stringify(trimmed));
       this._renderHistoryChips();
     } catch (e) {
-      // Fail silently if localStorage is blocked - history is a convenience feature, not essential.
+      // localStorage may be blocked - history is optional
     }
   }
 
@@ -1584,7 +1390,6 @@ class UIController {
     }
   }
 
-  /** Render history as clickable chips - they communicate "shortcut" visually and match the quick-load buttons. */
   _renderHistoryChips() {
     const container = this._el('history-chips');
     const section = this._el('search-history');
@@ -1620,9 +1425,8 @@ class UIController {
     section.hidden = false;
   }
 
-  // ---- Comparison mode ----
+  // ---- comparison mode ----
 
-  /** Toggle split-screen comparison mode - I added this because the RCSB viewer doesn't offer side-by-side structural comparison. */
   _toggleCompareMode() {
     const btn = this._el('compare-toggle-btn');
     const controls = this._el('compare-controls');
@@ -1635,15 +1439,13 @@ class UIController {
     controls.hidden = !this._compareActive;
 
     if (this._compareActive) {
-      // Show the second viewport and split the row
       vpB.hidden = false;
       vpRow.classList.add('comparison-active');
 
-      // Initialise the second NGL viewer the first time comparison is entered
       if (!this._viewer2) {
         this._viewer2 = new ViewerManager('viewport-b');
       }
-      // NGL stage needs a resize event after the container becomes visible
+      // ngl needs a resize call after the container becomes visible
       setTimeout(() => {
         if (this._viewer2?._stage) this._viewer2._stage.handleResize();
         if (this.viewer?._stage) this.viewer._stage.handleResize();
@@ -1652,7 +1454,6 @@ class UIController {
       vpB.hidden = true;
       vpRow.classList.remove('comparison-active');
       this._el('compare-label-b').hidden = true;
-      // Restore primary viewer to full width
       setTimeout(() => {
         if (this.viewer?._stage) this.viewer._stage.handleResize();
       }, 100);
@@ -1670,7 +1471,6 @@ class UIController {
       return;
     }
 
-    // Show loading indicator so the user knows the request is in progress.
     const loadingEl = this._el('compare-loading');
     if (loadingEl) loadingEl.hidden = false;
     const loadBtn = this._el('load-compare-btn');
@@ -1694,16 +1494,14 @@ class UIController {
     }
   }
 
-  // ---- Clear / reset ----
+  // ---- clear / reset ----
 
-  /** Reset the entire viewer back to its empty state - same as a fresh page load. */
   _clearViewer() {
     this.viewer.clearAll();
     this._currentMetadata = null;
     this._sequenceData = {};
     this._selectedResSpan = null;
 
-    // Reset UI panels
     this._el('metadata-placeholder').hidden = false;
     this._el('metadata-content').hidden = true;
     this._el('chain-section').hidden = true;
@@ -1719,7 +1517,6 @@ class UIController {
     this._el('spin-btn').setAttribute('aria-pressed', 'false');
     this._el('clear-viewer-btn').hidden = true;
 
-    // Exit comparison mode if it was active
     if (this._compareActive) {
       this._compareActive = false;
       this._el('compare-toggle-btn').setAttribute('aria-pressed', 'false');
@@ -1731,12 +1528,11 @@ class UIController {
       if (this._viewer2?._stage) this._viewer2._stage.removeAllComponents();
     }
 
-    // Show the empty state again
     this._el('empty-state').hidden = false;
     this._hideError();
   }
 
-  // ---- Loading / error state helpers ----
+  // ---- loading / error helpers ----
 
   _showLoading() {
     this._el('loading-overlay').hidden = false;
@@ -1761,20 +1557,16 @@ class UIController {
     this._el('empty-state').hidden = true;
   }
 
-  // ---- Utility ----
-
   _el(id) {
     return document.getElementById(id);
   }
 }
 
 
-/* ============================================================
-   Bootstrap - wire everything together on DOMContentLoaded
-   ============================================================ */
+/* bootstrap */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Backend URL is set here once - change this string to switch between local dev and a deployed server.
+  // change this string to switch between local dev and a deployed server
   const BACKEND_URL = 'http://127.0.0.1:5000';
 
   const api    = new ProteinAPI(BACKEND_URL);
