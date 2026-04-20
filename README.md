@@ -8,12 +8,12 @@ COMP1682 Final Year Project - University of Greenwich
 ## What is this?
 
 ProteinVis is a browser-based tool for visualising and exploring protein structures
-in 3D - without installing any desktop software. It fetches structure data from two
+in 3D without installing any desktop software. It fetches structure data from two
 public databases (RCSB PDB and AlphaFold EBI), renders them using WebGL via the NGL
-Viewer library, and provides interactive controls for representation, colour scheme,
+Viewer library and provides interactive controls for representation, colour scheme,
 chain visibility, sequence browsing, and distance measurement.
 
-The tool is designed for students and novice researchers who need to explore protein
+The tool is designed for students and early researchers who need to explore protein
 structures for coursework or research, but lack the technical background to use
 professional tools like UCSF ChimeraX or PyMOL. It is a complement to those tools,
 not a replacement.
@@ -80,7 +80,7 @@ same separation-of-concerns principle. `UIController` never calls NGL directly;
 so the headers being set are visible and explainable, not hidden behind a decorator.
 
 **In-memory cache with 1-hour TTL:** Chosen over Redis or a file cache because this
-is a local prototype - the overhead of an external cache service isn't justified.
+is a local prototype, the overhead of an external cache service isn't justified.
 The TTL of one hour covers any realistic user session without risk of stale data
 (PDB entries are updated weekly at most).
 
@@ -197,7 +197,7 @@ and UniProt accessions. No user accounts, no logging of queries beyond the local
 Flask process, no cookies.
 
 **Open data.** All structure data is publicly available under open licences. The
-application does not redistribute data - it fetches it on demand and holds it in
+application does not redistribute data, it fetches it on demand and holds it in
 a short-lived local cache.
 
 **Responsible API use.** A descriptive `User-Agent` header is sent with all requests
@@ -209,9 +209,3 @@ load on the remote APIs. Rate limiting is documented in `pdb_fetcher.py`.
 are keyboard-navigable. Colour is never used as the only means of conveying
 information (e.g. the sequence viewer uses both colour and letter codes).
 
----
-
-## Limitations
-
-See `TEST_PLAN.md` (Known Limitations section) for a full list of current limitations
-and areas identified for future improvement.
